@@ -188,26 +188,28 @@ class OTGAdapter {
         throw new Error('Resposta vazia da API');
       }
 
+      const responseData = response.data as any;
+
       // Se a resposta tem a estrutura aninhada { data: { data: [...], meta: {...} } }
-      if (response.data.data && response.data.data.data && Array.isArray(response.data.data.data)) {
+      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
         return {
-          data: response.data.data.data,
-          meta: response.data.data.meta,
+          data: responseData.data.data,
+          meta: responseData.data.meta,
         };
       }
 
       // Se a resposta tem a estrutura { data: [...] }
-      if (response.data.data && Array.isArray(response.data.data)) {
+      if (responseData.data && Array.isArray(responseData.data)) {
         return {
-          data: response.data.data,
-          meta: response.data.meta,
+          data: responseData.data,
+          meta: responseData.meta,
         };
       }
 
       // Se a resposta já é um array diretamente
-      if (Array.isArray(response.data)) {
+      if (Array.isArray(responseData)) {
         return {
-          data: response.data,
+          data: responseData,
           meta: undefined,
         };
       }
