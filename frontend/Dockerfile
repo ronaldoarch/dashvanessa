@@ -6,8 +6,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependências (incluindo devDependencies para build)
-# Desabilitar NODE_ENV durante instalação para garantir devDependencies
-RUN unset NODE_ENV && npm ci || npm install
+# Definir NODE_ENV=development durante instalação para garantir devDependencies
+RUN NODE_ENV=development npm ci
 
 # Copiar código fonte
 COPY . .
