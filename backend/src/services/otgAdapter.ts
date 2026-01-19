@@ -172,32 +172,48 @@ class OTGAdapter {
         },
       });
 
-      // Log da resposta para debug
-      console.log('📦 Resposta da API OTG:', JSON.stringify(response.data, null, 2));
+      // A API OTG retorna no formato:
+      // {
+      //   "statusCode": 200,
+      //   "message": "Success",
+      //   "data": {
+      //     "data": [...],
+      //     "meta": {...}
+      //   },
+      //   "timestamp": "..."
+      // }
 
-      // Validar resposta - pode vir em diferentes formatos
+      // Validar resposta
       if (!response.data) {
         throw new Error('Resposta vazia da API');
+      }
+
+      // Se a resposta tem a estrutura aninhada { data: { data: [...], meta: {...} } }
+      if (response.data.data && response.data.data.data && Array.isArray(response.data.data.data)) {
+        return {
+          data: response.data.data.data,
+          meta: response.data.data.meta,
+        };
+      }
+
+      // Se a resposta tem a estrutura { data: [...] }
+      if (response.data.data && Array.isArray(response.data.data)) {
+        return {
+          data: response.data.data,
+          meta: response.data.meta,
+        };
       }
 
       // Se a resposta já é um array diretamente
       if (Array.isArray(response.data)) {
         return {
           data: response.data,
-          meta: response.data.meta || undefined,
+          meta: undefined,
         };
       }
 
-      // Se a resposta tem a estrutura { data: [...] }
-      if (response.data.data && Array.isArray(response.data.data)) {
-        return response.data;
-      }
-
-      // Se a resposta tem estrutura diferente, tentar adaptar
-      console.warn('⚠️ Formato de resposta não esperado, tentando adaptar...');
-      console.warn('Estrutura recebida:', Object.keys(response.data));
-
       // Se não conseguir adaptar, retornar array vazio para não quebrar
+      console.warn('⚠️ Formato de resposta não reconhecido');
       return {
         data: [],
         meta: undefined,
