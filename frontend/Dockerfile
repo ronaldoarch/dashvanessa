@@ -6,16 +6,15 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependências (incluindo devDependencies para build)
-# Não definir NODE_ENV aqui para garantir que devDependencies sejam instaladas
-RUN npm ci --include=dev || npm install
+# Forçar instalação de devDependencies mesmo se NODE_ENV=production estiver definido
+RUN npm ci --include=dev
 
 # Copiar código fonte
 COPY . .
 
 # Build da aplicação Next.js
-# Definir NODE_ENV apenas durante o build
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN NODE_ENV=production npm run build
+RUN npm run build
 
 # Expor porta
 EXPOSE 3000
