@@ -100,24 +100,18 @@ class OTGAdapter {
 
       const responseData = response.data;
 
-      // A API OTG retorna no formato:
-      // {
-      //   "statusCode": 200,
-      //   "message": "Success",
-      //   "data": {
-      //     "data": [...],
-      //     "meta": {...}
-      //   }
-      // }
+      // Segundo a documentação, a API retorna: { "data": [...] }
+      // Mas na prática retorna: { "statusCode": 200, "data": { "data": [...] } }
+      // Vamos suportar ambos os formatos
 
-      // Se a resposta tem a estrutura aninhada { data: { data: [...] } }
-      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
-        return responseData.data.data;
-      }
-
-      // Se a resposta tem a estrutura { data: [...] }
+      // Formato da documentação: { "data": [...] }
       if (responseData.data && Array.isArray(responseData.data)) {
         return responseData.data;
+      }
+
+      // Formato real (aninhado): { "statusCode": 200, "data": { "data": [...] } }
+      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
+        return responseData.data.data;
       }
 
       // Se a resposta já é um array diretamente
@@ -127,6 +121,7 @@ class OTGAdapter {
 
       // Se não conseguir adaptar, retornar array vazio
       console.warn('⚠️ Formato de resposta de affiliates não reconhecido');
+      console.warn('Estrutura recebida:', Object.keys(responseData));
       return [];
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -150,14 +145,18 @@ class OTGAdapter {
 
       const responseData = response.data;
 
-      // Se a resposta tem a estrutura aninhada { data: { data: [...] } }
-      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
-        return responseData.data.data;
-      }
+      // Segundo a documentação, a API retorna: { "data": [...] }
+      // Mas na prática retorna: { "statusCode": 200, "data": { "data": [...] } }
+      // Vamos suportar ambos os formatos
 
-      // Se a resposta tem a estrutura { data: [...] }
+      // Formato da documentação: { "data": [...] }
       if (responseData.data && Array.isArray(responseData.data)) {
         return responseData.data;
+      }
+
+      // Formato real (aninhado): { "statusCode": 200, "data": { "data": [...] } }
+      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
+        return responseData.data.data;
       }
 
       // Se a resposta já é um array diretamente
@@ -167,6 +166,7 @@ class OTGAdapter {
 
       // Se não conseguir adaptar, retornar array vazio
       console.warn('⚠️ Formato de resposta de campaigns não reconhecido');
+      console.warn('Estrutura recebida:', Object.keys(responseData));
       return [];
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -226,16 +226,9 @@ class OTGAdapter {
         },
       });
 
-      // A API OTG retorna no formato:
-      // {
-      //   "statusCode": 200,
-      //   "message": "Success",
-      //   "data": {
-      //     "data": [...],
-      //     "meta": {...}
-      //   },
-      //   "timestamp": "..."
-      // }
+      // Segundo a documentação, a API retorna: { "data": [...], "meta": {...} }
+      // Mas na prática retorna: { "statusCode": 200, "data": { "data": [...], "meta": {...} } }
+      // Vamos suportar ambos os formatos
 
       // Validar resposta
       if (!response.data) {
@@ -244,19 +237,19 @@ class OTGAdapter {
 
       const responseData = response.data as any;
 
-      // Se a resposta tem a estrutura aninhada { data: { data: [...], meta: {...} } }
-      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
-        return {
-          data: responseData.data.data,
-          meta: responseData.data.meta,
-        };
-      }
-
-      // Se a resposta tem a estrutura { data: [...] }
+      // Formato da documentação: { "data": [...], "meta": {...} }
       if (responseData.data && Array.isArray(responseData.data)) {
         return {
           data: responseData.data,
           meta: responseData.meta,
+        };
+      }
+
+      // Formato real (aninhado): { "statusCode": 200, "data": { "data": [...], "meta": {...} } }
+      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
+        return {
+          data: responseData.data.data,
+          meta: responseData.data.meta,
         };
       }
 
@@ -270,6 +263,7 @@ class OTGAdapter {
 
       // Se não conseguir adaptar, retornar array vazio para não quebrar
       console.warn('⚠️ Formato de resposta não reconhecido');
+      console.warn('Estrutura recebida:', Object.keys(responseData));
       return {
         data: [],
         meta: undefined,
