@@ -67,10 +67,14 @@ cd backend && npm start
 
 ### Variáveis de Ambiente do Frontend
 
+**IMPORTANTE**: Configure `NODE_ENV` como **"Runtime only"** (não marque "Available at Buildtime") para evitar problemas no build.
+
 ```
-NODE_ENV=production
+NODE_ENV=production (Runtime only - NÃO marque "Available at Buildtime")
 NEXT_PUBLIC_API_URL=https://<url-do-backend>.coolify.app/api
 ```
+
+**Por quê?** Se `NODE_ENV=production` estiver disponível no build-time, o npm não instalará as `devDependencies` (como TypeScript), que são necessárias para compilar o Next.js.
 
 ### Build Command
 
