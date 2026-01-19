@@ -172,12 +172,36 @@ class OTGAdapter {
         },
       });
 
-      // Validar resposta
-      if (!response.data || !Array.isArray(response.data.data)) {
-        throw new Error('Resposta inválida da API: data não é um array');
+      // Log da resposta para debug
+      console.log('📦 Resposta da API OTG:', JSON.stringify(response.data, null, 2));
+
+      // Validar resposta - pode vir em diferentes formatos
+      if (!response.data) {
+        throw new Error('Resposta vazia da API');
       }
 
-      return response.data;
+      // Se a resposta já é um array diretamente
+      if (Array.isArray(response.data)) {
+        return {
+          data: response.data,
+          meta: response.data.meta || undefined,
+        };
+      }
+
+      // Se a resposta tem a estrutura { data: [...] }
+      if (response.data.data && Array.isArray(response.data.data)) {
+        return response.data;
+      }
+
+      // Se a resposta tem estrutura diferente, tentar adaptar
+      console.warn('⚠️ Formato de resposta não esperado, tentando adaptar...');
+      console.warn('Estrutura recebida:', Object.keys(response.data));
+
+      // Se não conseguir adaptar, retornar array vazio para não quebrar
+      return {
+        data: [],
+        meta: undefined,
+      };
     } catch (error: any) {
       if (error.response?.status === 401) {
         throw new Error('Chave de API inválida ou expirada. Verifique OTG_API_KEY no .env');
@@ -185,7 +209,11 @@ class OTGAdapter {
       if (error.response?.status === 400) {
         throw new Error(`Parâmetros inválidos: ${error.response.data?.message || error.message}`);
       }
-      console.error('Error fetching results:', error.message);
+      // Log detalhado do erro para debug
+      console.error('❌ Error fetching results:', error.message);
+      if (error.response?.data) {
+        console.error('📦 Response data:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }
@@ -278,12 +306,14 @@ class OTGAdapter {
         
         const response = await this.fetchResults(startDateStr, endDateStr, undefined, undefined, page, limit);
         
-        if (!response.data || response.data.length === 0) {
+        // Verificar se há dados
+        const results = response.data || [];
+        if (!results || results.length === 0) {
           console.log('ℹ️ Nenhum resultado encontrado nesta página');
           break;
         }
 
-        for (const result of response.data) {
+        for (const result of results) {
           totalProcessed++;
           // Encontrar ou criar afiliado
           let affiliate = await prisma.affiliate.findUnique({
