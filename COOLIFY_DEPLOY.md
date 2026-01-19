@@ -15,7 +15,7 @@ Este projeto tem **backend** e **frontend** separados. Você precisará criar **
 2. Preencha:
    - **Repository URL**: `https://github.com/ronaldoarch/dashvanessa`
    - **Branch**: `main`
-   - **Build Pack**: `Nixpacks` (ou `Dockerfile` se preferir)
+   - **Build Pack**: `Dockerfile` (o projeto já tem Dockerfile configurado em `/backend/Dockerfile`)
    - **Base Directory**: `/backend`
    - **Port**: `3001`
    - **Is it a static site?**: ❌ NÃO marque
@@ -36,21 +36,11 @@ OTG_API_KEY=<sua_chave_da_api_otg>
 OTG_API_BASE_URL=https://api-partners.grupootg.com/api/v1
 ```
 
-### Build Command (se necessário)
-
-Se o Nixpacks não detectar automaticamente, adicione:
-
-```bash
-cd backend && npm install && npx prisma generate && npx prisma migrate deploy
-```
-
-### Start Command
-
-```bash
-cd backend && npm start
-```
-
-**Nota**: Certifique-se de que o `package.json` do backend tem o script `start` configurado.
+**Nota**: O Dockerfile do backend já está configurado e vai:
+- Instalar dependências (incluindo devDependencies)
+- Gerar Prisma Client
+- Compilar TypeScript
+- Executar migrations (você precisará executar manualmente após o deploy)
 
 ## 2. Deploy do Frontend
 
