@@ -92,36 +92,90 @@ class OTGAdapter {
 
   async fetchAffiliates(): Promise<OTGAffiliate[]> {
     try {
-      const response = await this.api.get<OTGResponse<OTGAffiliate>>('/external/affiliates');
+      const response = await this.api.get<any>('/external/affiliates');
       
-      if (!response.data || !Array.isArray(response.data.data)) {
-        throw new Error('Resposta inválida da API: data não é um array');
+      if (!response.data) {
+        throw new Error('Resposta vazia da API');
       }
 
-      return response.data.data;
+      const responseData = response.data;
+
+      // A API OTG retorna no formato:
+      // {
+      //   "statusCode": 200,
+      //   "message": "Success",
+      //   "data": {
+      //     "data": [...],
+      //     "meta": {...}
+      //   }
+      // }
+
+      // Se a resposta tem a estrutura aninhada { data: { data: [...] } }
+      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
+        return responseData.data.data;
+      }
+
+      // Se a resposta tem a estrutura { data: [...] }
+      if (responseData.data && Array.isArray(responseData.data)) {
+        return responseData.data;
+      }
+
+      // Se a resposta já é um array diretamente
+      if (Array.isArray(responseData)) {
+        return responseData;
+      }
+
+      // Se não conseguir adaptar, retornar array vazio
+      console.warn('⚠️ Formato de resposta de affiliates não reconhecido');
+      return [];
     } catch (error: any) {
       if (error.response?.status === 401) {
         throw new Error('Chave de API inválida ou expirada. Verifique OTG_API_KEY no .env');
       }
       console.error('Error fetching affiliates:', error.message);
+      if (error.response?.data) {
+        console.error('📦 Response data:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }
 
   async fetchCampaigns(): Promise<OTGCampaign[]> {
     try {
-      const response = await this.api.get<OTGResponse<OTGCampaign>>('/external/campaigns');
+      const response = await this.api.get<any>('/external/campaigns');
       
-      if (!response.data || !Array.isArray(response.data.data)) {
-        throw new Error('Resposta inválida da API: data não é um array');
+      if (!response.data) {
+        throw new Error('Resposta vazia da API');
       }
 
-      return response.data.data;
+      const responseData = response.data;
+
+      // Se a resposta tem a estrutura aninhada { data: { data: [...] } }
+      if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
+        return responseData.data.data;
+      }
+
+      // Se a resposta tem a estrutura { data: [...] }
+      if (responseData.data && Array.isArray(responseData.data)) {
+        return responseData.data;
+      }
+
+      // Se a resposta já é um array diretamente
+      if (Array.isArray(responseData)) {
+        return responseData;
+      }
+
+      // Se não conseguir adaptar, retornar array vazio
+      console.warn('⚠️ Formato de resposta de campaigns não reconhecido');
+      return [];
     } catch (error: any) {
       if (error.response?.status === 401) {
         throw new Error('Chave de API inválida ou expirada. Verifique OTG_API_KEY no .env');
       }
       console.error('Error fetching campaigns:', error.message);
+      if (error.response?.data) {
+        console.error('📦 Response data:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }
