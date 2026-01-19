@@ -60,7 +60,7 @@ cd backend && npm start
 2. Preencha:
    - **Repository URL**: `https://github.com/ronaldoarch/dashvanessa`
    - **Branch**: `main`
-   - **Build Pack**: `Nixpacks`
+   - **Build Pack**: `Dockerfile` (o projeto já tem Dockerfile configurado) ou `Nixpacks`
    - **Base Directory**: `/frontend`
    - **Port**: `3000`
    - **Is it a static site?**: ❌ NÃO marque (Next.js precisa de servidor Node)
