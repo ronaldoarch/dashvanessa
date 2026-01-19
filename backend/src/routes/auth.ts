@@ -36,6 +36,7 @@ router.post('/login', async (req, res) => {
       throw new Error('JWT_SECRET não configurado');
     }
 
+    // @ts-ignore - jsonwebtoken types issue with expiresIn
     const token = jwt.sign(
       {
         userId: user.id,
@@ -43,8 +44,10 @@ router.post('/login', async (req, res) => {
         role: user.role,
         affiliateId: user.affiliateId,
       },
-      secret as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      secret,
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      }
     );
 
     res.json({
