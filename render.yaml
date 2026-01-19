@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: dashvanessa-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install && npx prisma generate && npx prisma migrate deploy
+    startCommand: cd backend && npm run dev
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OTG_API_KEY
+        sync: false
+      - key: OTG_API_BASE_URL
+        value: https://api-partners.grupootg.com/api/v1
+      - key: PORT
+        value: 3001
+      - key: CORS_ORIGIN
+        sync: false
+
+  - type: web
+    name: dashvanessa-frontend
+    env: node
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+
+databases:
+  - name: dashvanessa-db
+    databaseName: dashvanessa
+    user: dashvanessa_user
+    plan: free
