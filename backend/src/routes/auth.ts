@@ -43,7 +43,7 @@ router.post('/login', async (req, res) => {
         role: user.role,
         affiliateId: user.affiliateId,
       },
-      secret,
+      secret as string,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
@@ -132,13 +132,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
-      include: { affiliate: true },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        affiliateId: true,
+      include: {
         affiliate: true,
       },
     });
