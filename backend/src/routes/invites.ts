@@ -1,7 +1,6 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { requireAdmin } from '../middleware/requireAdmin';
+import { authenticate, AuthRequest, requireAdmin } from '../middleware/auth';
 import SuperbetAdapter from '../services/superbetAdapter';
 import crypto from 'crypto';
 
