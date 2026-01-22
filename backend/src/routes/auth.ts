@@ -16,9 +16,33 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
+    // Verificar conexão com banco
+    try {
+      await prisma.$connect();
+    } catch (dbError: any) {
+      console.error('Database connection error:', dbError);
+      return res.status(500).json({ 
+        error: 'Erro de conexão com banco de dados',
+        ...(process.env.NODE_ENV !== 'production' && { details: dbError.message })
+      });
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { affiliate: true },
+      include: { 
+        affiliate: {
+          include: {
+            deal: {
+              select: {
+                id: true,
+                name: true,
+                cpaValue: true,
+                revSharePercentage: true,
+              }
+            }
+          }
+        } 
+      },
     });
 
     if (!user) {
@@ -60,9 +84,23 @@ router.post('/login', async (req, res) => {
         affiliateId: user.affiliateId,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Erro ao fazer login' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+    });
+    
+    // Retornar mensagem mais específica em desenvolvimento
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? 'Erro ao fazer login'
+      : error.message || 'Erro ao fazer login';
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      ...(process.env.NODE_ENV !== 'production' && { details: error.message })
+    });
   }
 });
 
