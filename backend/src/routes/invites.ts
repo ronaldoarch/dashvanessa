@@ -447,8 +447,14 @@ router.post('/:id/check-status', authenticate, requireAdmin, async (req: AuthReq
       where: { id },
     });
 
-    if (!invite || !invite.superbetRequestId) {
-      return res.status(404).json({ error: 'Convite ou requestId não encontrado' });
+    if (!invite) {
+      return res.status(404).json({ error: 'Convite não encontrado' });
+    }
+
+    if (!invite.superbetRequestId) {
+      return res.status(400).json({ 
+        error: 'Este convite ainda não foi registrado na Superbet. O afiliado precisa acessar o link de cadastro primeiro.' 
+      });
     }
 
     // Verificar status na Superbet

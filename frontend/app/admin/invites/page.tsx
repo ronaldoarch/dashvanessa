@@ -100,6 +100,19 @@ export default function InvitesPage() {
   };
 
   const handleCheckStatus = async (inviteId: string) => {
+    // Verificar se o convite tem requestId antes de tentar verificar
+    const invite = invites.find(inv => inv.id === inviteId);
+    if (!invite) {
+      alert('Convite não encontrado');
+      return;
+    }
+
+    // Se o convite ainda não foi registrado (não tem requestId), informar
+    if (invite.status === 'PENDING' && !invite.affiliate) {
+      alert('ℹ️ Este convite ainda não foi usado pelo afiliado.\n\nO afiliado precisa acessar o link de cadastro primeiro para que o sistema envie os dados para a Superbet.');
+      return;
+    }
+
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/invites/${inviteId}/check-status`,
@@ -113,6 +126,8 @@ export default function InvitesPage() {
       
       if (response.data.status === 'approved' && response.data.affiliateLink) {
         alert(`✅ Afiliado aprovado!\n\nLink Superbet: ${response.data.affiliateLink}\n\nAgora você pode criar um deal para este afiliado.`);
+      } else if (response.data.status === 'pending') {
+        alert(`⏳ Status: Pendente\n\nAinda aguardando aprovação da Superbet.\n\nVocê pode verificar novamente mais tarde ou configurar o webhook para receber notificações automáticas.`);
       } else {
         alert(`Status: ${response.data.status}\n\nAinda aguardando aprovação da Superbet.`);
       }
@@ -120,7 +135,12 @@ export default function InvitesPage() {
       loadInvites();
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || 'Erro ao verificar status';
-      alert(`❌ ${errorMsg}\n\nVerifique se:\n- O requestId está configurado\n- A API da Superbet está acessível\n- As credenciais estão corretas`);
+      
+      if (errorMsg.includes('requestId não encontrado')) {
+        alert(`ℹ️ Este convite ainda não foi registrado na Superbet.\n\nO afiliado precisa:\n1. Acessar o link de cadastro\n2. Preencher o formulário\n3. Enviar os dados para a Superbet\n\nDepois disso, você poderá verificar o status.`);
+      } else {
+        alert(`❌ ${errorMsg}\n\nVerifique se:\n- A API da Superbet está acessível\n- As credenciais estão corretas\n- O convite foi registrado pelo afiliado`);
+      }
     }
   };
 
