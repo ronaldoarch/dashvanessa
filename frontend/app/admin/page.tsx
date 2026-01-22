@@ -187,6 +187,12 @@ export default function AdminPage() {
               >
                 Dashboard
               </button>
+              <button
+                onClick={() => router.push('/admin/invites')}
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-lg transition-all"
+              >
+                Convites
+              </button>
               <span className="text-sm text-gray-300 font-medium">{user?.name}</span>
               <button
                 onClick={() => {
