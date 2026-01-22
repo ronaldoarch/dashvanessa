@@ -26,6 +26,13 @@ enum CommissionType {
   REVENUE_SHARE
 }
 
+enum AffiliateInviteStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -55,15 +62,17 @@ model Session {
 }
 
 model Affiliate {
-  id              String   @id @default(cuid())
-  externalId      String?  @unique
-  name            String
-  siteIds         Int[]
-  userId          String   @unique
-  dealId          String?
-  referredById    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  externalId            String?  @unique
+  name                  String
+  siteIds               Int[]
+  userId                String   @unique
+  dealId                String?
+  referredById          String?
+  superbetAffiliateLink String?
+  superbetAffiliateId   String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   deal            Deal?             @relation(fields: [dealId], references: [id], onDelete: SetNull)
@@ -74,6 +83,7 @@ model Affiliate {
   transactions    Transaction[]
   commissions     Commission[]
   revshareReports RevShareReport[]
+  invite          AffiliateInvite?
 
   @@index([referredById])
   @@map("affiliates")
@@ -191,4 +201,24 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 
   @@map("system_configs")
+}
+
+model AffiliateInvite {
+  id                String                @id @default(cuid())
+  code              String                @unique
+  email             String
+  name              String
+  status            AffiliateInviteStatus @default(PENDING)
+  expiresAt         DateTime
+  affiliateId       String?               @unique
+  superbetRequestId String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  affiliate Affiliate? @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+
+  @@index([code])
+  @@index([status])
+  @@index([email])
+  @@map("affiliate_invites")
 }
