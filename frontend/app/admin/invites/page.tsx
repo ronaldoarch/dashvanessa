@@ -101,7 +101,7 @@ export default function InvitesPage() {
 
   const handleCheckStatus = async (inviteId: string) => {
     try {
-      await axios.post(
+      const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/invites/${inviteId}/check-status`,
         {},
         {
@@ -110,9 +110,17 @@ export default function InvitesPage() {
           },
         }
       );
+      
+      if (response.data.status === 'approved' && response.data.affiliateLink) {
+        alert(`✅ Afiliado aprovado!\n\nLink Superbet: ${response.data.affiliateLink}\n\nAgora você pode criar um deal para este afiliado.`);
+      } else {
+        alert(`Status: ${response.data.status}\n\nAinda aguardando aprovação da Superbet.`);
+      }
+      
       loadInvites();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao verificar status');
+      const errorMsg = err.response?.data?.error || 'Erro ao verificar status';
+      alert(`❌ ${errorMsg}\n\nVerifique se:\n- O requestId está configurado\n- A API da Superbet está acessível\n- As credenciais estão corretas`);
     }
   };
 
@@ -223,12 +231,20 @@ export default function InvitesPage() {
                           <button
                             onClick={() => copyToClipboard(invite.affiliate!.superbetAffiliateLink!)}
                             className="text-gray-400 hover:text-white"
+                            title="Copiar link Superbet"
                           >
                             📋
                           </button>
                         </div>
+                      ) : invite.status === 'PENDING' ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-gray-500">Aguardando aprovação</span>
+                          <span className="text-xs text-gray-600">
+                            Clique em 🔄 para verificar
+                          </span>
+                        </div>
                       ) : (
-                        <span className="text-gray-500">Aguardando aprovação</span>
+                        <span className="text-gray-500">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
