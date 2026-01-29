@@ -445,12 +445,14 @@ class OTGAdapter {
 
               // Criar comissão CPA se qualificado
               if (result.qualified_cpa > 0) {
-                // Buscar deal do afiliado para usar o valor correto
+                // IMPORTANTE: Sempre buscar deal do afiliado para usar o valor correto
+                // O deal criado pelo admin tem prioridade sobre valores padrão
                 const affiliateWithDeal = await prisma.affiliate.findUnique({
                   where: { id: affiliate!.id },
                   include: { deal: true },
                 });
 
+                // Usar valor do deal do admin se existir e estiver ativo, senão usar padrão
                 const affiliateCpaValue = affiliateWithDeal?.deal && affiliateWithDeal.deal.active
                   ? Number(affiliateWithDeal.deal.cpaValue)
                   : cpaValue;
@@ -484,12 +486,14 @@ class OTGAdapter {
           // Processar Revenue Share
           // O campo 'rvs' indica se há revenue share, mas o valor vem de 'lucro_tipster'
           if (result.rvs > 0 || result.lucro_tipster > 0) {
-            // Buscar deal do afiliado para usar a porcentagem correta
+            // IMPORTANTE: Sempre buscar deal do afiliado para usar a porcentagem correta
+            // O deal criado pelo admin tem prioridade sobre valores padrão
             const affiliateWithDeal = await prisma.affiliate.findUnique({
               where: { id: affiliate!.id },
               include: { deal: true },
             });
 
+            // Usar porcentagem do deal do admin se existir e estiver ativo, senão usar padrão
             const affiliateRevSharePercentage = affiliateWithDeal?.deal && affiliateWithDeal.deal.active
               ? Number(affiliateWithDeal.deal.revSharePercentage)
               : revSharePercentage;

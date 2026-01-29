@@ -27,7 +27,8 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res) => {
     const defaultCpaValue = parseFloat(await getSystemConfig('CPA_VALUE', '300'));
     const defaultRevSharePercentage = parseFloat(await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25'));
 
-    // Se for um afiliado individual, usar valores do deal dele
+    // IMPORTANTE: Se for um afiliado individual, usar valores do deal criado pelo admin
+    // O deal tem prioridade sobre valores padrão do sistema
     let cpaValue = defaultCpaValue;
     let revSharePercentage = defaultRevSharePercentage;
     let dealName: string | null = null;
@@ -38,6 +39,8 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res) => {
         include: { deal: true },
       });
 
+      // IMPORTANTE: Usar valores do deal criado pelo admin se existir e estiver ativo
+      // O deal tem prioridade sobre valores padrão do sistema
       if (affiliate?.deal && affiliate.deal.active) {
         cpaValue = Number(affiliate.deal.cpaValue);
         revSharePercentage = Number(affiliate.deal.revSharePercentage);
@@ -189,7 +192,8 @@ router.get('/affiliates', authenticate, async (req: AuthRequest, res) => {
           affiliateId: affiliate.id,
         };
 
-        // Usar valores do deal do afiliado ou valores padrão
+        // IMPORTANTE: Usar valores do deal criado pelo admin para este afiliado
+        // O deal tem prioridade sobre valores padrão do sistema
         const affiliateCpaValue = affiliate.deal && affiliate.deal.active 
           ? Number(affiliate.deal.cpaValue) 
           : defaultCpaValue;
