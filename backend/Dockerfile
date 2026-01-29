@@ -30,5 +30,5 @@ ENV NODE_ENV=production
 ENV PORT=3001
 ENV HOST=0.0.0.0
 
-# Comando para iniciar
-CMD ["npm", "start"]
+# Comando para iniciar (executa migrations antes)
+CMD ["npm", "run", "start:migrate"]
