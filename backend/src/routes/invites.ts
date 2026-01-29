@@ -43,23 +43,60 @@ async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName:
     // Tentar buscar deal real da API da Superbet
     if (affiliateIdToUse) {
       try {
-        const superbetDeal = await superbetAdapter.getAffiliateDeal(affiliateIdToUse);
+        const superbetDealData = await superbetAdapter.getAffiliateDeal(affiliateIdToUse);
         
-        if (superbetDeal) {
-          // Criar deal com valores reais da Superbet
-          dealToAssociate = await prisma.deal.create({
-            data: {
-              name: superbetDeal.dealName || `Deal ${affiliateName}`,
-              cpaValue: superbetDeal.cpaValue,
-              revSharePercentage: superbetDeal.revSharePercentage,
-              description: `Deal puxado automaticamente da API Superbet para ${affiliateName}`,
-              active: true,
-            },
-          });
-          console.log(`✅ Deal real da Superbet obtido e criado para afiliado ${affiliateId}`);
+        if (superbetDealData) {
+          // Extrair valores de forma flexível (espelha todos os dados da API)
+          let cpaValue: number | undefined;
+          let revSharePercentage: number | undefined;
+          let dealName: string | undefined;
+          let description: string | undefined;
+
+          // Tentar diferentes estruturas de resposta
+          if (superbetDealData.deal) {
+            // Formato: { deal: { cpaValue, revSharePercentage, name, ... } }
+            cpaValue = superbetDealData.deal.cpaValue;
+            revSharePercentage = superbetDealData.deal.revSharePercentage;
+            dealName = superbetDealData.deal.name;
+            description = superbetDealData.deal.description || `Deal espelhado da API Superbet para ${affiliateName}`;
+          } else {
+            // Formato direto: { cpaValue, revSharePercentage, name, ... }
+            cpaValue = superbetDealData.cpaValue;
+            revSharePercentage = superbetDealData.revSharePercentage;
+            dealName = superbetDealData.name || superbetDealData.dealName;
+            description = superbetDealData.description || `Deal espelhado da API Superbet para ${affiliateName}`;
+          }
+
+          // Validar valores obrigatórios
+          if (cpaValue !== undefined && revSharePercentage !== undefined) {
+            // Preparar descrição com todos os dados espelhados da API
+            const apiDataJson = JSON.stringify(superbetDealData, null, 2);
+            const fullDescription = description 
+              ? `${description}\n\n📊 Dados completos da API Superbet:\n\`\`\`json\n${apiDataJson}\n\`\`\``
+              : `Deal espelhado automaticamente da API Superbet para ${affiliateName}.\n\n📊 Dados completos da API:\n\`\`\`json\n${apiDataJson}\n\`\`\``;
+
+            // Criar deal espelhando todos os dados da API
+            dealToAssociate = await prisma.deal.create({
+              data: {
+                name: dealName || `Deal ${affiliateName}`,
+                cpaValue: cpaValue,
+                revSharePercentage: revSharePercentage,
+                description: fullDescription,
+                active: true,
+              },
+            });
+            console.log(`✅ Deal espelhado da Superbet criado para afiliado ${affiliateId}`);
+            console.log(`📋 Dados completos recebidos da API:`, JSON.stringify(superbetDealData, null, 2));
+          } else {
+            console.log(`⚠️  Dados do deal da Superbet incompletos (faltam cpaValue ou revSharePercentage)`);
+            console.log(`📋 Dados recebidos:`, JSON.stringify(superbetDealData, null, 2));
+          }
         }
       } catch (superbetError: any) {
         console.log(`⚠️  Não foi possível obter deal da Superbet: ${superbetError.message}`);
+        if (superbetError.response?.data) {
+          console.log(`📋 Resposta de erro da API:`, JSON.stringify(superbetError.response.data, null, 2));
+        }
       }
     }
 

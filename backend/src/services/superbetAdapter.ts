@@ -126,46 +126,26 @@ class SuperbetAdapter {
 
   /**
    * Obtém informações do deal de um afiliado da Superbet
+   * Retorna todos os dados que vierem da API (espelha completamente)
    */
-  async getAffiliateDeal(affiliateId: string): Promise<{
-    cpaValue: number;
-    revSharePercentage: number;
-    dealName?: string;
-  } | null> {
+  async getAffiliateDeal(affiliateId: string): Promise<any | null> {
     try {
-      const response = await this.api.get<{
-        deal?: {
-          cpaValue: number;
-          revSharePercentage: number;
-          name?: string;
-        };
-        cpaValue?: number;
-        revSharePercentage?: number;
-      }>(`/affiliates/${affiliateId}/deal`);
+      const response = await this.api.get(`/affiliates/${affiliateId}/deal`);
 
-      // Tentar diferentes formatos de resposta
-      if (response.data.deal) {
-        return {
-          cpaValue: response.data.deal.cpaValue,
-          revSharePercentage: response.data.deal.revSharePercentage,
-          dealName: response.data.deal.name,
-        };
-      }
+      // Log completo da resposta para debug
+      console.log(`📊 Dados completos do deal da Superbet para afiliado ${affiliateId}:`, JSON.stringify(response.data, null, 2));
 
-      if (response.data.cpaValue !== undefined && response.data.revSharePercentage !== undefined) {
-        return {
-          cpaValue: response.data.cpaValue,
-          revSharePercentage: response.data.revSharePercentage,
-        };
-      }
-
-      return null;
+      // Retornar todos os dados que vierem da API
+      return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
         console.log(`Deal não encontrado para afiliado ${affiliateId}`);
         return null;
       }
       console.error('Error getting affiliate deal:', error.message);
+      if (error.response?.data) {
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+      }
       // Não lançar erro, apenas retornar null para não quebrar o fluxo
       return null;
     }
