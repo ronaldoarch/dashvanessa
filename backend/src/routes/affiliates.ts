@@ -1,10 +1,17 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
+import SuperbetAdapter from '../services/superbetAdapter';
 import crypto from 'crypto';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Inicializar adapter Superbet (configurar via env)
+const superbetAdapter = new SuperbetAdapter({
+  apiKey: process.env.SUPERBET_API_KEY || '',
+  baseURL: process.env.SUPERBET_API_URL || 'https://api.superbet.com/v1',
+});
 
 // Cadastro público de afiliado (sem convite)
 router.post('/register', async (req, res) => {
@@ -41,15 +48,68 @@ router.post('/register', async (req, res) => {
       },
     });
 
+    // Enviar dados para Superbet via API
+    let superbetRequestId: string | null = null;
+    let superbetAffiliateId: string | null = null;
+    let superbetAffiliateLink: string | null = null;
+    
+    try {
+      console.log('📡 Enviando dados do afiliado para Superbet API...');
+      const superbetResponse = await superbetAdapter.registerAffiliate({
+        email,
+        name,
+        phone,
+        company,
+      });
+
+      superbetRequestId = superbetResponse.requestId;
+      
+      // Se foi aprovado imediatamente pela Superbet, salvar dados
+      if (superbetResponse.status === 'approved' && superbetResponse.affiliateLink) {
+        superbetAffiliateId = superbetResponse.affiliateId || null;
+        superbetAffiliateLink = superbetResponse.affiliateLink;
+        console.log('✅ Afiliado aprovado imediatamente pela Superbet');
+      } else {
+        console.log('⏳ Afiliado pendente na Superbet (requestId:', superbetRequestId, ')');
+      }
+    } catch (superbetError: any) {
+      console.error('⚠️ Erro ao enviar dados para Superbet:', superbetError.message);
+      // Continuar mesmo se Superbet falhar - o cadastro será criado localmente
+      // O admin pode cadastrar manualmente depois
+    }
+
     // Criar afiliado com status PENDING (aguardando aprovação do admin)
+    // Mesmo que Superbet tenha aprovado, mantemos PENDING até admin aprovar no sistema
     const affiliate = await prisma.affiliate.create({
       data: {
         name,
         userId: user.id,
         status: 'PENDING',
         siteIds: [],
+        superbetAffiliateId: superbetAffiliateId,
+        superbetAffiliateLink: superbetAffiliateLink,
       },
     });
+
+    // Criar registro de invite para rastrear o requestId da Superbet (se necessário)
+    if (superbetRequestId) {
+      try {
+        await prisma.affiliateInvite.create({
+          data: {
+            code: crypto.randomBytes(8).toString('hex').toUpperCase(),
+            email,
+            name,
+            status: superbetAffiliateLink ? 'APPROVED' : 'PENDING',
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+            superbetRequestId: superbetRequestId,
+            affiliateId: affiliate.id,
+          },
+        });
+      } catch (inviteError: any) {
+        // Ignorar erro se já existir invite ou outro problema
+        console.log('Nota: Não foi possível criar registro de invite:', inviteError.message);
+      }
+    }
 
     // Atualizar user com affiliateId
     await prisma.user.update({
@@ -58,12 +118,14 @@ router.post('/register', async (req, res) => {
     });
 
     res.status(201).json({
-      message: 'Cadastro realizado com sucesso! Sua conta está aguardando aprovação do administrador.',
+      message: 'Cadastro realizado com sucesso! Dados enviados para Superbet. Sua conta está aguardando aprovação do administrador.',
       affiliate: {
         id: affiliate.id,
         email: user.email,
         name: affiliate.name,
         status: affiliate.status,
+        superbetRequestId: superbetRequestId,
+        superbetApproved: !!superbetAffiliateLink,
       },
     });
   } catch (error: any) {
