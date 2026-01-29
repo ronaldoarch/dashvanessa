@@ -22,13 +22,14 @@ function generateInviteCode(): string {
 
 /**
  * Criar e associar deal automaticamente quando o link da Superbet é cadastrado
+ * Busca o deal real da API da Superbet
  */
-async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName: string): Promise<void> {
+async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName: string, superbetAffiliateId?: string): Promise<void> {
   try {
     // Verificar se o afiliado já tem um deal associado
     const affiliate = await prisma.affiliate.findUnique({
       where: { id: affiliateId },
-      select: { dealId: true },
+      select: { dealId: true, superbetAffiliateId: true },
     });
 
     if (affiliate?.dealId) {
@@ -36,41 +37,70 @@ async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName:
       return;
     }
 
-    // Primeiro, tentar usar o deal padrão criado quando o admin cadastrou o link
-    let defaultDeal = await prisma.deal.findFirst({
-      where: {
-        name: 'Deal Padrão',
-        active: true,
-      },
-    });
+    let dealToAssociate = null;
+    const affiliateIdToUse = superbetAffiliateId || affiliate?.superbetAffiliateId;
 
-    // Se não existe deal padrão, criar um novo deal para este afiliado
-    if (!defaultDeal) {
-      const { getSystemConfig } = await import('../services/config');
-      
-      // Obter valores padrão do sistema
-      const defaultCpaValue = parseFloat(await getSystemConfig('CPA_VALUE', '300'));
-      const defaultRevSharePercentage = parseFloat(await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25'));
+    // Tentar buscar deal real da API da Superbet
+    if (affiliateIdToUse) {
+      try {
+        const superbetDeal = await superbetAdapter.getAffiliateDeal(affiliateIdToUse);
+        
+        if (superbetDeal) {
+          // Criar deal com valores reais da Superbet
+          dealToAssociate = await prisma.deal.create({
+            data: {
+              name: superbetDeal.dealName || `Deal ${affiliateName}`,
+              cpaValue: superbetDeal.cpaValue,
+              revSharePercentage: superbetDeal.revSharePercentage,
+              description: `Deal puxado automaticamente da API Superbet para ${affiliateName}`,
+              active: true,
+            },
+          });
+          console.log(`✅ Deal real da Superbet obtido e criado para afiliado ${affiliateId}`);
+        }
+      } catch (superbetError: any) {
+        console.log(`⚠️  Não foi possível obter deal da Superbet: ${superbetError.message}`);
+      }
+    }
 
-      // Criar deal para o afiliado
-      defaultDeal = await prisma.deal.create({
-        data: {
-          name: `Deal ${affiliateName}`,
-          cpaValue: defaultCpaValue,
-          revSharePercentage: defaultRevSharePercentage,
-          description: `Deal criado automaticamente para ${affiliateName}`,
+    // Se não conseguiu buscar da Superbet, usar deal padrão ou criar um novo
+    if (!dealToAssociate) {
+      // Tentar usar o deal padrão criado quando o admin cadastrou o link
+      dealToAssociate = await prisma.deal.findFirst({
+        where: {
+          name: 'Deal Padrão',
           active: true,
         },
       });
+
+      // Se não existe deal padrão, criar um novo deal com valores padrão do sistema
+      if (!dealToAssociate) {
+        const { getSystemConfig } = await import('../services/config');
+        
+        // Obter valores padrão do sistema
+        const defaultCpaValue = parseFloat(await getSystemConfig('CPA_VALUE', '300'));
+        const defaultRevSharePercentage = parseFloat(await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25'));
+
+        // Criar deal para o afiliado
+        dealToAssociate = await prisma.deal.create({
+          data: {
+            name: `Deal ${affiliateName}`,
+            cpaValue: defaultCpaValue,
+            revSharePercentage: defaultRevSharePercentage,
+            description: `Deal criado automaticamente para ${affiliateName}`,
+            active: true,
+          },
+        });
+      }
     }
 
     // Associar deal ao afiliado
     await prisma.affiliate.update({
       where: { id: affiliateId },
-      data: { dealId: defaultDeal.id },
+      data: { dealId: dealToAssociate.id },
     });
 
-    console.log(`✅ Deal associado automaticamente ao afiliado ${affiliateId} (${defaultDeal.name})`);
+    console.log(`✅ Deal associado automaticamente ao afiliado ${affiliateId} (${dealToAssociate.name})`);
   } catch (error: any) {
     console.error('Erro ao criar deal automático:', error);
     // Não lançar erro para não quebrar o fluxo principal
@@ -373,8 +403,8 @@ router.post('/:code/register', async (req, res) => {
           },
         });
 
-        // Criar e associar deal automaticamente
-        await createAndAssociateDefaultDeal(affiliate.id, invite.name);
+        // Criar e associar deal automaticamente (buscar deal real da Superbet)
+        await createAndAssociateDefaultDeal(affiliate.id, invite.name, superbetResponse.affiliateId);
 
         return res.status(201).json({
           message: 'Cadastro realizado com sucesso! Você já pode fazer login.',
@@ -444,7 +474,7 @@ router.post('/webhook/superbet', async (req, res) => {
 
       // Se foi aprovado e ainda não tem deal, criar e associar deal automaticamente
       if (status === 'approved' && !invite.affiliate.dealId) {
-        await createAndAssociateDefaultDeal(invite.affiliate.id, invite.name);
+        await createAndAssociateDefaultDeal(invite.affiliate.id, invite.name, affiliateId);
       }
 
       return res.json({ message: 'Afiliado atualizado com sucesso' });
@@ -497,8 +527,8 @@ router.post('/webhook/superbet', async (req, res) => {
         },
       });
 
-      // Criar e associar deal automaticamente
-      await createAndAssociateDefaultDeal(affiliate.id, invite.name);
+      // Criar e associar deal automaticamente (buscar deal real da Superbet)
+      await createAndAssociateDefaultDeal(affiliate.id, invite.name, affiliateId);
 
       // TODO: Enviar email para o afiliado com credenciais e link
     } else {
@@ -589,8 +619,8 @@ router.post('/:id/check-status', authenticate, requireAdmin, async (req: AuthReq
         data: { affiliateId: affiliate.id },
       });
 
-      // Criar e associar deal automaticamente
-      await createAndAssociateDefaultDeal(affiliate.id, invite.name);
+      // Criar e associar deal automaticamente (buscar deal real da Superbet)
+      await createAndAssociateDefaultDeal(affiliate.id, invite.name, status.affiliateId);
     }
 
     res.json({

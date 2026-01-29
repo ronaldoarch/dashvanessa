@@ -125,6 +125,53 @@ class SuperbetAdapter {
   }
 
   /**
+   * Obtém informações do deal de um afiliado da Superbet
+   */
+  async getAffiliateDeal(affiliateId: string): Promise<{
+    cpaValue: number;
+    revSharePercentage: number;
+    dealName?: string;
+  } | null> {
+    try {
+      const response = await this.api.get<{
+        deal?: {
+          cpaValue: number;
+          revSharePercentage: number;
+          name?: string;
+        };
+        cpaValue?: number;
+        revSharePercentage?: number;
+      }>(`/affiliates/${affiliateId}/deal`);
+
+      // Tentar diferentes formatos de resposta
+      if (response.data.deal) {
+        return {
+          cpaValue: response.data.deal.cpaValue,
+          revSharePercentage: response.data.deal.revSharePercentage,
+          dealName: response.data.deal.name,
+        };
+      }
+
+      if (response.data.cpaValue !== undefined && response.data.revSharePercentage !== undefined) {
+        return {
+          cpaValue: response.data.cpaValue,
+          revSharePercentage: response.data.revSharePercentage,
+        };
+      }
+
+      return null;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.log(`Deal não encontrado para afiliado ${affiliateId}`);
+        return null;
+      }
+      console.error('Error getting affiliate deal:', error.message);
+      // Não lançar erro, apenas retornar null para não quebrar o fluxo
+      return null;
+    }
+  }
+
+  /**
    * Webhook para receber notificações de aprovação da Superbet
    * (Este método será chamado quando a Superbet aprovar um afiliado)
    */

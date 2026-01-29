@@ -50,37 +50,6 @@ router.put('/admin-superbet-link', authenticate, requireAdmin, async (req, res) 
 
     await setSystemConfig('ADMIN_SUPERBET_LINK', link);
 
-    // Se é a primeira vez cadastrando o link, criar deal padrão
-    if (isFirstTime) {
-      try {
-        const cpaValue = parseFloat(await getSystemConfig('CPA_VALUE', '300'));
-        const revSharePercentage = parseFloat(await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25'));
-
-        // Verificar se já existe um deal padrão
-        const existingDefaultDeal = await prisma.deal.findFirst({
-          where: {
-            name: 'Deal Padrão',
-          },
-        });
-
-        if (!existingDefaultDeal) {
-          await prisma.deal.create({
-            data: {
-              name: 'Deal Padrão',
-              cpaValue,
-              revSharePercentage,
-              description: 'Deal padrão criado automaticamente quando o admin cadastra o link da Superbet',
-              active: true,
-            },
-          });
-          console.log('✅ Deal padrão criado automaticamente');
-        }
-      } catch (dealError: any) {
-        console.error('Erro ao criar deal padrão:', dealError);
-        // Não falhar o cadastro do link se houver erro ao criar deal
-      }
-    }
-
     res.json({ link, message: 'Link da Superbet atualizado com sucesso' });
   } catch (error) {
     console.error('Update admin superbet link error:', error);
