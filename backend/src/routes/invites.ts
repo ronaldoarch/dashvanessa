@@ -24,7 +24,7 @@ function generateInviteCode(): string {
  * Criar e associar deal automaticamente quando o link da Superbet é cadastrado
  * Busca o deal real da API da Superbet
  */
-async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName: string, superbetAffiliateId?: string): Promise<void> {
+export async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName: string, superbetAffiliateId?: string): Promise<void> {
   try {
     // Verificar se o afiliado já tem um deal associado
     const affiliate = await prisma.affiliate.findUnique({
@@ -739,6 +739,22 @@ router.post('/:id/check-status', authenticate, requireAdmin, async (req: AuthReq
   } catch (error: any) {
     console.error('Check status error:', error);
     res.status(500).json({ error: 'Erro ao verificar status' });
+  }
+});
+
+// Endpoint para sincronizar afiliados pendentes manualmente (apenas admin)
+router.post('/sync-pending', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    // Importar função de sincronização do cron
+    const cronModule = await import('../services/cron');
+    
+    // Executar sincronização
+    await cronModule.syncSuperbetAffiliates?.();
+    
+    res.json({ message: 'Sincronização de afiliados pendentes concluída' });
+  } catch (error: any) {
+    console.error('Sync pending error:', error);
+    res.status(500).json({ error: 'Erro ao sincronizar afiliados pendentes' });
   }
 });
 

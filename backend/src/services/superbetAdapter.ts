@@ -125,6 +125,58 @@ class SuperbetAdapter {
   }
 
   /**
+   * Lista afiliados aprovados da Superbet (se disponível na API)
+   */
+  async listAffiliates(): Promise<any[]> {
+    try {
+      const response = await this.api.get<any[]>('/affiliates');
+      console.log(`📋 Lista de afiliados da Superbet:`, JSON.stringify(response.data, null, 2));
+      return response.data || [];
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.log('Endpoint de listar afiliados não disponível na API Superbet');
+        return [];
+      }
+      console.error('Error listing affiliates:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Busca afiliado por email na API da Superbet
+   */
+  async findAffiliateByEmail(email: string): Promise<any | null> {
+    try {
+      const response = await this.api.get<any>(`/affiliates/by-email/${encodeURIComponent(email)}`);
+      console.log(`📋 Afiliado encontrado na Superbet:`, JSON.stringify(response.data, null, 2));
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      console.error('Error finding affiliate by email:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Busca afiliado por ID na API da Superbet
+   */
+  async getAffiliateById(affiliateId: string): Promise<any | null> {
+    try {
+      const response = await this.api.get<any>(`/affiliates/${affiliateId}`);
+      console.log(`📋 Dados do afiliado da Superbet:`, JSON.stringify(response.data, null, 2));
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      console.error('Error getting affiliate by id:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * Obtém informações do deal de um afiliado da Superbet
    * Retorna todos os dados que vierem da API (espelha completamente)
    */
