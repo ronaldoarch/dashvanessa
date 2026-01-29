@@ -36,30 +36,41 @@ async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName:
       return;
     }
 
-    const { getSystemConfig } = await import('../services/config');
-    
-    // Obter valores padrão do sistema
-    const defaultCpaValue = parseFloat(await getSystemConfig('CPA_VALUE', '300'));
-    const defaultRevSharePercentage = parseFloat(await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25'));
-
-    // Criar deal padrão para o afiliado
-    const deal = await prisma.deal.create({
-      data: {
-        name: `Deal ${affiliateName}`,
-        cpaValue: defaultCpaValue,
-        revSharePercentage: defaultRevSharePercentage,
-        description: `Deal criado automaticamente para ${affiliateName}`,
+    // Primeiro, tentar usar o deal padrão criado quando o admin cadastrou o link
+    let defaultDeal = await prisma.deal.findFirst({
+      where: {
+        name: 'Deal Padrão',
         active: true,
       },
     });
 
+    // Se não existe deal padrão, criar um novo deal para este afiliado
+    if (!defaultDeal) {
+      const { getSystemConfig } = await import('../services/config');
+      
+      // Obter valores padrão do sistema
+      const defaultCpaValue = parseFloat(await getSystemConfig('CPA_VALUE', '300'));
+      const defaultRevSharePercentage = parseFloat(await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25'));
+
+      // Criar deal para o afiliado
+      defaultDeal = await prisma.deal.create({
+        data: {
+          name: `Deal ${affiliateName}`,
+          cpaValue: defaultCpaValue,
+          revSharePercentage: defaultRevSharePercentage,
+          description: `Deal criado automaticamente para ${affiliateName}`,
+          active: true,
+        },
+      });
+    }
+
     // Associar deal ao afiliado
     await prisma.affiliate.update({
       where: { id: affiliateId },
-      data: { dealId: deal.id },
+      data: { dealId: defaultDeal.id },
     });
 
-    console.log(`✅ Deal criado e associado automaticamente ao afiliado ${affiliateId}`);
+    console.log(`✅ Deal associado automaticamente ao afiliado ${affiliateId} (${defaultDeal.name})`);
   } catch (error: any) {
     console.error('Erro ao criar deal automático:', error);
     // Não lançar erro para não quebrar o fluxo principal
