@@ -13,6 +13,11 @@ interface Affiliate {
   externalId: string | null
   userId: string
   dealId: string | null
+  superbetAffiliateLink?: string
+  superbetAffiliateId?: string
+  instagramLink?: string
+  facebookLink?: string
+  telegramLink?: string
   createdAt: string
   user: {
     id: string
@@ -94,6 +99,15 @@ export default function AdminPage() {
   const [showSuperbetLinkModal, setShowSuperbetLinkModal] = useState(false)
   const [editingSuperbetLink, setEditingSuperbetLink] = useState('')
   const [savingSuperbetLink, setSavingSuperbetLink] = useState(false)
+  
+  // Estados para links sociais
+  const [showSocialLinksModal, setShowSocialLinksModal] = useState(false)
+  const [socialLinks, setSocialLinks] = useState({
+    instagramLink: '',
+    facebookLink: '',
+    telegramLink: '',
+  })
+  const [savingSocialLinks, setSavingSocialLinks] = useState(false)
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'ADMIN')) {
@@ -286,6 +300,34 @@ export default function AdminPage() {
     } catch (error: any) {
       alert(error.response?.data?.error || 'Erro ao atualizar senha')
     }
+  }
+
+  const handleSaveSocialLinks = async () => {
+    if (!selectedAffiliate) return
+    
+    setSavingSocialLinks(true)
+    try {
+      await api.put(`/affiliates/${selectedAffiliate.id}/social-links`, socialLinks)
+      alert('Links sociais atualizados com sucesso!')
+      await fetchData()
+      setShowSocialLinksModal(false)
+      setSocialLinks({ instagramLink: '', facebookLink: '', telegramLink: '' })
+      setSelectedAffiliate(null)
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Erro ao atualizar links sociais')
+    } finally {
+      setSavingSocialLinks(false)
+    }
+  }
+
+  const openSocialLinksModal = (affiliate: Affiliate) => {
+    setSelectedAffiliate(affiliate)
+    setSocialLinks({
+      instagramLink: affiliate.instagramLink || '',
+      facebookLink: affiliate.facebookLink || '',
+      telegramLink: affiliate.telegramLink || '',
+    })
+    setShowSocialLinksModal(true)
   }
 
   const handleCreateInvite = async (e: React.FormEvent) => {
@@ -503,6 +545,9 @@ export default function AdminPage() {
                           Link de Referral
                         </th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Link Superbet
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
                           Ações
                         </th>
                       </tr>
@@ -510,7 +555,7 @@ export default function AdminPage() {
                     <tbody className="divide-y divide-gray-800">
                       {affiliates.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">
+                          <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-400">
                             Nenhum afiliado cadastrado
                           </td>
                         </tr>
@@ -582,6 +627,30 @@ export default function AdminPage() {
                                   <span className="text-xs text-gray-500">Defina um deal primeiro</span>
                                 )}
                               </td>
+                              <td className="px-6 py-4 text-sm">
+                                {affiliate.superbetAffiliateLink ? (
+                                  <div className="flex items-center gap-2">
+                                    <a
+                                      href={affiliate.superbetAffiliateLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-green-400 hover:text-green-300 truncate max-w-xs text-xs"
+                                      title="Link espelhado da API Superbet"
+                                    >
+                                      {affiliate.superbetAffiliateLink}
+                                    </a>
+                                    <button
+                                      onClick={() => copyToClipboard(affiliate.superbetAffiliateLink!)}
+                                      className="text-gray-400 hover:text-white"
+                                      title="Copiar link Superbet"
+                                    >
+                                      📋
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-500">Pendente</span>
+                                )}
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 <div className="flex flex-col gap-2">
                                   <div className="flex gap-2">
@@ -624,6 +693,14 @@ export default function AdminPage() {
                                         Remover Deal
                                       </button>
                                     )}
+                                  </div>
+                                  <div className="flex gap-2 mt-1">
+                                    <button
+                                      onClick={() => openSocialLinksModal(affiliate)}
+                                      className="text-green-400 hover:text-green-300 text-xs"
+                                    >
+                                      Links Sociais
+                                    </button>
                                   </div>
                                 </div>
                               </td>
@@ -892,6 +969,94 @@ export default function AdminPage() {
                   onClick={() => {
                     setShowSuperbetLinkModal(false)
                     setEditingSuperbetLink('')
+                  }}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Links Sociais */}
+      {showSocialLinksModal && selectedAffiliate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-white mb-4">Links Sociais - {selectedAffiliate.name}</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Gerencie os links sociais do afiliado. O link da Superbet será exibido automaticamente quando disponível.
+            </p>
+            
+            {/* Link da Superbet (somente leitura) */}
+            {selectedAffiliate.superbetAffiliateLink && (
+              <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                <label className="block text-gray-300 text-sm font-medium mb-2">Link Superbet (espelhado da API)</label>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={selectedAffiliate.superbetAffiliateLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-400 hover:text-purple-300 text-sm break-all flex-1"
+                  >
+                    {selectedAffiliate.superbetAffiliateLink}
+                  </a>
+                  <button
+                    onClick={() => copyToClipboard(selectedAffiliate.superbetAffiliateLink!)}
+                    className="text-gray-400 hover:text-white"
+                    title="Copiar link"
+                  >
+                    📋
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Instagram</label>
+                <input
+                  type="url"
+                  value={socialLinks.instagramLink}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, instagramLink: e.target.value })}
+                  placeholder="https://instagram.com/..."
+                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Facebook</label>
+                <input
+                  type="url"
+                  value={socialLinks.facebookLink}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, facebookLink: e.target.value })}
+                  placeholder="https://facebook.com/..."
+                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Telegram</label>
+                <input
+                  type="url"
+                  value={socialLinks.telegramLink}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, telegramLink: e.target.value })}
+                  placeholder="https://t.me/..."
+                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveSocialLinks}
+                  disabled={savingSocialLinks}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                >
+                  {savingSocialLinks ? 'Salvando...' : 'Salvar'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSocialLinksModal(false)
+                    setSocialLinks({ instagramLink: '', facebookLink: '', telegramLink: '' })
+                    setSelectedAffiliate(null)
                   }}
                   className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
                 >
