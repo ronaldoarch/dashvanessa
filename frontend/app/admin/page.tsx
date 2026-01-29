@@ -708,17 +708,29 @@ export default function AdminPage() {
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                    affiliate.status === 'APPROVED'
-                                      ? 'bg-green-500/20 text-green-400'
-                                      : affiliate.status === 'PENDING'
-                                      ? 'bg-yellow-500/20 text-yellow-400'
-                                      : 'bg-red-500/20 text-red-400'
-                                  }`}
-                                >
-                                  {affiliate.status === 'APPROVED' ? 'Aprovado' : affiliate.status === 'PENDING' ? 'Em Verificação' : 'Rejeitado'}
-                                </span>
+                                <div className="flex flex-col gap-1">
+                                  <span
+                                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                      affiliate.status === 'APPROVED'
+                                        ? 'bg-green-500/20 text-green-400'
+                                        : affiliate.status === 'PENDING'
+                                        ? 'bg-yellow-500/20 text-yellow-400'
+                                        : 'bg-red-500/20 text-red-400'
+                                    }`}
+                                  >
+                                    {affiliate.status === 'APPROVED' ? 'Aprovado' : affiliate.status === 'PENDING' ? 'Em Verificação' : 'Rejeitado'}
+                                  </span>
+                                  {affiliate.status === 'PENDING' && affiliate.superbetAffiliateLink && (
+                                    <span className="text-xs text-green-400">
+                                      ✓ Superbet aprovou
+                                    </span>
+                                  )}
+                                  {affiliate.status === 'PENDING' && !affiliate.superbetAffiliateLink && affiliate.superbetAffiliateId && (
+                                    <span className="text-xs text-yellow-400">
+                                      ⏳ Superbet pendente
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-xs text-gray-400 font-mono">
