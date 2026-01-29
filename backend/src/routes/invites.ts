@@ -21,6 +21,52 @@ function generateInviteCode(): string {
 }
 
 /**
+ * Criar e associar deal automaticamente quando o link da Superbet é cadastrado
+ */
+async function createAndAssociateDefaultDeal(affiliateId: string, affiliateName: string): Promise<void> {
+  try {
+    // Verificar se o afiliado já tem um deal associado
+    const affiliate = await prisma.affiliate.findUnique({
+      where: { id: affiliateId },
+      select: { dealId: true },
+    });
+
+    if (affiliate?.dealId) {
+      console.log(`ℹ️  Afiliado ${affiliateId} já possui deal associado, pulando criação automática`);
+      return;
+    }
+
+    const { getSystemConfig } = await import('../services/config');
+    
+    // Obter valores padrão do sistema
+    const defaultCpaValue = parseFloat(await getSystemConfig('CPA_VALUE', '300'));
+    const defaultRevSharePercentage = parseFloat(await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25'));
+
+    // Criar deal padrão para o afiliado
+    const deal = await prisma.deal.create({
+      data: {
+        name: `Deal ${affiliateName}`,
+        cpaValue: defaultCpaValue,
+        revSharePercentage: defaultRevSharePercentage,
+        description: `Deal criado automaticamente para ${affiliateName}`,
+        active: true,
+      },
+    });
+
+    // Associar deal ao afiliado
+    await prisma.affiliate.update({
+      where: { id: affiliateId },
+      data: { dealId: deal.id },
+    });
+
+    console.log(`✅ Deal criado e associado automaticamente ao afiliado ${affiliateId}`);
+  } catch (error: any) {
+    console.error('Erro ao criar deal automático:', error);
+    // Não lançar erro para não quebrar o fluxo principal
+  }
+}
+
+/**
  * Criar novo convite (apenas admin)
  * Obtém link de cadastro da Superbet para enviar ao afiliado
  */
@@ -316,6 +362,9 @@ router.post('/:code/register', async (req, res) => {
           },
         });
 
+        // Criar e associar deal automaticamente
+        await createAndAssociateDefaultDeal(affiliate.id, invite.name);
+
         return res.status(201).json({
           message: 'Cadastro realizado com sucesso! Você já pode fazer login.',
           affiliate: {
@@ -382,6 +431,11 @@ router.post('/webhook/superbet', async (req, res) => {
         data: { status: status === 'approved' ? 'APPROVED' : 'REJECTED' },
       });
 
+      // Se foi aprovado e ainda não tem deal, criar e associar deal automaticamente
+      if (status === 'approved' && !invite.affiliate.dealId) {
+        await createAndAssociateDefaultDeal(invite.affiliate.id, invite.name);
+      }
+
       return res.json({ message: 'Afiliado atualizado com sucesso' });
     }
 
@@ -431,6 +485,9 @@ router.post('/webhook/superbet', async (req, res) => {
           status: 'APPROVED',
         },
       });
+
+      // Criar e associar deal automaticamente
+      await createAndAssociateDefaultDeal(affiliate.id, invite.name);
 
       // TODO: Enviar email para o afiliado com credenciais e link
     } else {
@@ -520,6 +577,9 @@ router.post('/:id/check-status', authenticate, requireAdmin, async (req: AuthReq
         where: { id },
         data: { affiliateId: affiliate.id },
       });
+
+      // Criar e associar deal automaticamente
+      await createAndAssociateDefaultDeal(affiliate.id, invite.name);
     }
 
     res.json({
