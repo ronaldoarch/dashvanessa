@@ -147,9 +147,6 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 
       const affiliates = await prisma.affiliate.findMany({
         where,
-        orderBy: {
-          createdAt: 'desc',
-        },
         include: {
           user: {
             select: {
