@@ -471,6 +471,7 @@ router.post('/:code/register', async (req, res) => {
 
 /**
  * Webhook da Superbet para notificar aprovação (público, mas protegido por token)
+ * Recebe quando afiliado se cadastra e é aprovado pela Superbet
  */
 router.post('/webhook/superbet', async (req, res) => {
   try {
@@ -480,20 +481,41 @@ router.post('/webhook/superbet', async (req, res) => {
       return res.status(401).json({ error: 'Token inválido' });
     }
 
-    const { requestId, affiliateId, affiliateLink, status } = req.body;
+    const { requestId, affiliateId, affiliateLink, status, email, password } = req.body;
 
     if (!requestId || !affiliateId || !affiliateLink) {
       return res.status(400).json({ error: 'Dados inválidos' });
     }
 
-    // Buscar convite pelo requestId
-    const invite = await prisma.affiliateInvite.findFirst({
+    // Log completo dos dados recebidos para debug
+    console.log('📥 Webhook Superbet recebido:', JSON.stringify(req.body, null, 2));
+
+    // Buscar convite pelo requestId OU criar novo se não existir (fluxo direto da Superbet)
+    let invite = await prisma.affiliateInvite.findFirst({
       where: { superbetRequestId: requestId },
       include: { affiliate: true },
     });
 
+    // Se não encontrou convite, pode ser cadastro direto via link da Superbet
+    // Nesse caso, criar um registro temporário para rastrear
+    if (!invite && email) {
+      console.log('📝 Criando registro para afiliado cadastrado diretamente via Superbet');
+      // Criar um registro temporário para rastrear
+      invite = await prisma.affiliateInvite.create({
+        data: {
+          code: generateInviteCode(),
+          email: email,
+          name: req.body.name || email.split('@')[0], // Usar nome do webhook ou derivar do email
+          status: 'PENDING',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias
+          superbetRequestId: requestId,
+        },
+        include: { affiliate: true },
+      });
+    }
+
     if (!invite) {
-      return res.status(404).json({ error: 'Convite não encontrado' });
+      return res.status(404).json({ error: 'Registro não encontrado e email não fornecido' });
     }
 
     // Se já tem afiliado criado, apenas atualizar
@@ -527,27 +549,41 @@ router.post('/webhook/superbet', async (req, res) => {
       });
 
       if (!user) {
-        // Criar usuário com senha temporária (usuário precisará resetar)
+        // IMPORTANTE: Tentar espelhar senha que veio da Superbet, senão criar temporária
         const bcrypt = await import('bcryptjs');
-        const tempPassword = crypto.randomBytes(16).toString('hex');
-        const hashedPassword = await bcrypt.default.hash(tempPassword, 10);
+        let hashedPassword: string;
+        
+        if (password && typeof password === 'string') {
+          // Se a Superbet enviou a senha, espelhar ela
+          console.log('🔐 Espelhando senha recebida da Superbet');
+          hashedPassword = await bcrypt.default.hash(password, 10);
+        } else {
+          // Senão, criar senha temporária
+          const tempPassword = crypto.randomBytes(16).toString('hex');
+          hashedPassword = await bcrypt.default.hash(tempPassword, 10);
+          console.log('⚠️  Senha não recebida da Superbet, criando temporária');
+        }
+
+        // Usar email que veio da Superbet se disponível, senão usar do convite
+        const userEmail = email || invite.email;
+        const userName = invite.name;
 
         user = await prisma.user.create({
           data: {
-            email: invite.email,
+            email: userEmail,
             password: hashedPassword,
-            name: invite.name,
+            name: userName,
             role: 'AFFILIATE',
           },
         });
       }
 
-      // Criar afiliado
+      // Criar afiliado com link espelhado da Superbet
       const affiliate = await prisma.affiliate.create({
         data: {
           name: invite.name,
           userId: user.id,
-          superbetAffiliateLink: affiliateLink,
+          superbetAffiliateLink: affiliateLink, // Link espelhado da Superbet
           superbetAffiliateId: affiliateId,
           siteIds: [],
         },

@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
+import crypto from 'crypto';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -133,6 +134,54 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     }
     console.error('Create affiliate error:', error);
     res.status(500).json({ error: 'Erro ao criar afiliado' });
+  }
+});
+
+// Cadastrar link da Superbet de uma afiliada (apenas admin)
+// Usado quando a afiliada envia seu link da Superbet para o admin cadastrar
+router.post('/register-superbet-link', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { email, name, superbetLink } = req.body;
+
+    if (!email || !name || !superbetLink) {
+      return res.status(400).json({ error: 'Email, nome e link da Superbet são obrigatórios' });
+    }
+
+    // Verificar se já existe afiliado com este email
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+
+    // Criar registro pendente (será aprovado quando Superbet enviar webhook)
+    // Não criamos usuário ainda, apenas registramos o link
+    const invite = await prisma.affiliateInvite.create({
+      data: {
+        code: crypto.randomBytes(8).toString('hex').toUpperCase(),
+        email,
+        name,
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+        superbetRequestId: null, // Será preenchido quando Superbet aprovar
+      },
+    });
+
+    res.status(201).json({
+      message: 'Link da Superbet cadastrado. Aguardando aprovação da Superbet.',
+      invite: {
+        id: invite.id,
+        email: invite.email,
+        name: invite.name,
+        status: invite.status,
+        superbetLink, // Link que será usado quando aprovar
+      },
+    });
+  } catch (error: any) {
+    console.error('Register superbet link error:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar link da Superbet' });
   }
 });
 

@@ -70,7 +70,7 @@ interface Invite {
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'affiliates' | 'invites'>('affiliates')
+  const [activeTab] = useState<'affiliates'>('affiliates') // Removido 'invites' - não enviamos convites
   const [affiliates, setAffiliates] = useState<Affiliate[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [deals, setDeals] = useState<Deal[]>([])
@@ -507,8 +507,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="mb-6 flex gap-4 border-b border-gray-800">
+          {/* Tabs - Removido aba de convites pois não enviamos convites */}
+          {/* <div className="mb-6 flex gap-4 border-b border-gray-800">
             <button
               onClick={() => setActiveTab('affiliates')}
               className={`px-4 py-2 font-medium transition-colors ${
@@ -519,20 +519,10 @@ export default function AdminPage() {
             >
               Afiliados
             </button>
-            <button
-              onClick={() => setActiveTab('invites')}
-              className={`px-4 py-2 font-medium transition-colors ${
-                activeTab === 'invites'
-                  ? 'text-primary-400 border-b-2 border-primary-400'
-                  : 'text-gray-400 hover:text-gray-300'
-              }`}
-            >
-              Convites
-            </button>
-          </div>
+          </div> */}
 
           {/* Tab Content: Afiliados */}
-          {activeTab === 'affiliates' && (
+          {(
             <>
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-white mb-2">Gerenciar Afiliados</h2>
@@ -557,10 +547,7 @@ export default function AdminPage() {
                           CPA / RevShare
                         </th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                          Link de Referral
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                          Link Superbet
+                          Links (Superbet e Sociais)
                         </th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
                           Ações
@@ -570,7 +557,7 @@ export default function AdminPage() {
                     <tbody className="divide-y divide-gray-800">
                       {affiliates.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-400">
+                          <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">
                             Nenhum afiliado cadastrado
                           </td>
                         </tr>
@@ -620,51 +607,71 @@ export default function AdminPage() {
                                 )}
                               </td>
                               <td className="px-6 py-4 text-sm">
-                                {affiliate.deal ? (
-                                  <div className="flex items-center gap-2">
-                                    <a
-                                      href={referralLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-purple-400 hover:text-purple-300 truncate max-w-xs text-xs"
-                                    >
-                                      {referralLink}
-                                    </a>
-                                    <button
-                                      onClick={() => copyToClipboard(referralLink)}
-                                      className="text-gray-400 hover:text-white"
-                                      title="Copiar link"
-                                    >
-                                      📋
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-gray-500">Defina um deal primeiro</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-sm">
-                                {affiliate.superbetAffiliateLink ? (
-                                  <div className="flex items-center gap-2">
-                                    <a
-                                      href={affiliate.superbetAffiliateLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-green-400 hover:text-green-300 truncate max-w-xs text-xs"
-                                      title="Link espelhado da API Superbet"
-                                    >
-                                      {affiliate.superbetAffiliateLink}
-                                    </a>
-                                    <button
-                                      onClick={() => copyToClipboard(affiliate.superbetAffiliateLink!)}
-                                      className="text-gray-400 hover:text-white"
-                                      title="Copiar link Superbet"
-                                    >
-                                      📋
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-gray-500">Pendente</span>
-                                )}
+                                <div className="space-y-2">
+                                  {/* Link Superbet */}
+                                  {affiliate.superbetAffiliateLink ? (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-400">Superbet:</span>
+                                      <a
+                                        href={affiliate.superbetAffiliateLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-green-400 hover:text-green-300 truncate max-w-xs text-xs"
+                                        title="Link espelhado da API Superbet"
+                                      >
+                                        {affiliate.superbetAffiliateLink}
+                                      </a>
+                                      <button
+                                        onClick={() => copyToClipboard(affiliate.superbetAffiliateLink!)}
+                                        className="text-gray-400 hover:text-white"
+                                        title="Copiar link Superbet"
+                                      >
+                                        📋
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-500">Superbet: Pendente</div>
+                                  )}
+                                  
+                                  {/* Links Sociais */}
+                                  {(affiliate.instagramLink || affiliate.facebookLink || affiliate.telegramLink) && (
+                                    <div className="flex flex-wrap gap-2 text-xs">
+                                      {affiliate.instagramLink && (
+                                        <a
+                                          href={affiliate.instagramLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-pink-400 hover:text-pink-300"
+                                          title="Instagram"
+                                        >
+                                          📷 Instagram
+                                        </a>
+                                      )}
+                                      {affiliate.facebookLink && (
+                                        <a
+                                          href={affiliate.facebookLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-400 hover:text-blue-300"
+                                          title="Facebook"
+                                        >
+                                          📘 Facebook
+                                        </a>
+                                      )}
+                                      {affiliate.telegramLink && (
+                                        <a
+                                          href={affiliate.telegramLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-cyan-400 hover:text-cyan-300"
+                                          title="Telegram"
+                                        >
+                                          ✈️ Telegram
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 <div className="flex flex-col gap-2">
@@ -730,8 +737,8 @@ export default function AdminPage() {
             </>
           )}
 
-          {/* Tab Content: Convites */}
-          {activeTab === 'invites' && (
+          {/* Tab Content: Convites - REMOVIDO - Não enviamos convites */}
+          {false && activeTab === 'invites' && (
             <>
               <div className="mb-6 flex justify-between items-center">
                 <div>
@@ -1177,11 +1184,31 @@ export default function AdminPage() {
             <h3 className="text-xl font-bold text-white mb-4">Credenciais de Acesso</h3>
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Email (da Superbet)</label>
                 <div className="bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-100 font-mono text-sm">
                   {selectedAffiliate.user.email}
                 </div>
               </div>
+              
+              {/* Link de Login */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Link de Login (envie este link para o afiliado)
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-100 font-mono text-sm break-all">
+                    {typeof window !== 'undefined' ? `${window.location.origin}/login` : ''}
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(typeof window !== 'undefined' ? `${window.location.origin}/login` : '')}
+                    className="text-gray-400 hover:text-white px-3 py-2"
+                    title="Copiar link de login"
+                  >
+                    📋
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Nova Senha (opcional)</label>
                 <input
@@ -1191,8 +1218,31 @@ export default function AdminPage() {
                   placeholder="Deixe em branco para manter a atual"
                   className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-100 text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  A senha será atualizada. A senha original do cadastro será substituída.
+                </p>
               </div>
             </div>
+            
+            {/* Botão para copiar tudo */}
+            <div className="mb-4">
+              <button
+                onClick={async () => {
+                  const loginLink = typeof window !== 'undefined' ? `${window.location.origin}/login` : ''
+                  const credentialsText = `🔐 Credenciais de Acesso\n\n📧 Email: ${selectedAffiliate.user.email}\n🔗 Link de Login: ${loginLink}\n\nEnvie este link para o afiliado fazer login.`
+                  try {
+                    await navigator.clipboard.writeText(credentialsText)
+                    alert('Credenciais copiadas para área de transferência!')
+                  } catch (e) {
+                    // Ignorar erro
+                  }
+                }}
+                className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm"
+              >
+                📋 Copiar Credenciais Completas
+              </button>
+            </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => {
