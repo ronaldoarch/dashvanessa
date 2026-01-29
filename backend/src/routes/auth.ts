@@ -230,4 +230,143 @@ router.put('/change-password', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Atualizar email do próprio usuário (requer senha atual)
+router.put('/change-email', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { currentPassword, newEmail } = req.body;
+
+    if (!currentPassword || !newEmail) {
+      return res.status(400).json({ error: 'Senha atual e novo email são obrigatórios' });
+    }
+
+    // Validar formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({ error: 'Formato de email inválido' });
+    }
+
+    // Buscar usuário atual
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Verificar senha atual
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Senha atual incorreta' });
+    }
+
+    // Verificar se o novo email já existe
+    const existingUser = await prisma.user.findUnique({
+      where: { email: newEmail },
+    });
+
+    if (existingUser && existingUser.id !== req.user!.id) {
+      return res.status(400).json({ error: 'Este email já está em uso' });
+    }
+
+    // Atualizar email
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { email: newEmail },
+    });
+
+    res.json({ message: 'Email atualizado com sucesso', email: newEmail });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Este email já está em uso' });
+    }
+    console.error('Change email error:', error);
+    res.status(500).json({ error: 'Erro ao atualizar email' });
+  }
+});
+
+// Atualizar email e senha do próprio usuário (requer senha atual)
+router.put('/change-credentials', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { currentPassword, newEmail, newPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({ error: 'Senha atual é obrigatória' });
+    }
+
+    if (!newEmail && !newPassword) {
+      return res.status(400).json({ error: 'Informe pelo menos o novo email ou a nova senha' });
+    }
+
+    // Buscar usuário atual
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Verificar senha atual
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Senha atual incorreta' });
+    }
+
+    const updateData: any = {};
+
+    // Validar e atualizar email se fornecido
+    if (newEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newEmail)) {
+        return res.status(400).json({ error: 'Formato de email inválido' });
+      }
+
+      // Verificar se o novo email já existe
+      const existingUser = await prisma.user.findUnique({
+        where: { email: newEmail },
+      });
+
+      if (existingUser && existingUser.id !== req.user!.id) {
+        return res.status(400).json({ error: 'Este email já está em uso' });
+      }
+
+      updateData.email = newEmail;
+    }
+
+    // Validar e atualizar senha se fornecida
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+      }
+      updateData.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    // Atualizar dados
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    res.json({ 
+      message: 'Credenciais atualizadas com sucesso',
+      email: updatedUser.email,
+    });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Este email já está em uso' });
+    }
+    console.error('Change credentials error:', error);
+    res.status(500).json({ error: 'Erro ao atualizar credenciais' });
+  }
+});
+
 export default router;

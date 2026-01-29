@@ -110,9 +110,10 @@ export default function AdminPage() {
   })
   const [savingSocialLinks, setSavingSocialLinks] = useState(false)
   
-  // Estados para alterar senha do admin
+  // Estados para alterar credenciais do admin
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
+  const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
@@ -311,39 +312,79 @@ export default function AdminPage() {
     }
   }
 
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('Preencha todos os campos')
+  const handleChangeCredentials = async () => {
+    // Validar que pelo menos email ou senha foi preenchido
+    if (!currentPassword) {
+      setPasswordError('A senha atual é obrigatória')
       return
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError('A nova senha deve ter pelo menos 6 caracteres')
+    if (!newEmail && !newPassword) {
+      setPasswordError('Preencha pelo menos o novo email ou a nova senha')
       return
     }
 
-    if (newPassword !== confirmPassword) {
-      setPasswordError('As senhas não coincidem')
-      return
+    // Validar email se fornecido
+    if (newEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(newEmail)) {
+        setPasswordError('Formato de email inválido')
+        return
+      }
+    }
+
+    // Validar senha se fornecida
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        setPasswordError('A nova senha deve ter pelo menos 6 caracteres')
+        return
+      }
+
+      if (newPassword !== confirmPassword) {
+        setPasswordError('As senhas não coincidem')
+        return
+      }
     }
 
     setChangingPassword(true)
     setPasswordError('')
 
     try {
-      await api.put('/auth/change-password', {
+      const updateData: any = {
         currentPassword,
-        newPassword,
-      })
+      }
+
+      if (newEmail) {
+        updateData.newEmail = newEmail
+      }
+
+      if (newPassword) {
+        updateData.newPassword = newPassword
+      }
+
+      const response = await api.put('/auth/change-credentials', updateData)
       
-      alert('Senha atualizada com sucesso!')
+      // Se o email foi alterado, atualizar o usuário no localStorage
+      if (newEmail && response.data.email) {
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+        currentUser.email = response.data.email
+        localStorage.setItem('user', JSON.stringify(currentUser))
+      }
+      
+      alert('Credenciais atualizadas com sucesso!')
       setShowChangePasswordModal(false)
       setCurrentPassword('')
+      setNewEmail('')
       setNewPassword('')
       setConfirmPassword('')
       setPasswordError('')
+      
+      // Recarregar a página para atualizar o email no header se necessário
+      if (newEmail) {
+        window.location.reload()
+      }
     } catch (error: any) {
-      setPasswordError(error.response?.data?.error || 'Erro ao atualizar senha')
+      setPasswordError(error.response?.data?.error || 'Erro ao atualizar credenciais')
     } finally {
       setChangingPassword(false)
     }
@@ -497,7 +538,7 @@ export default function AdminPage() {
                 onClick={() => setShowChangePasswordModal(true)}
                 className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
               >
-                Alterar Senha
+                Alterar Email/Senha
               </button>
               <span className="text-sm text-gray-300 font-medium">{user?.name}</span>
               <button
@@ -1434,11 +1475,11 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Modal para alterar senha do admin */}
+      {/* Modal para alterar credenciais do admin */}
       {showChangePasswordModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="glass rounded-xl p-6 max-w-md w-full border border-gray-800">
-            <h3 className="text-xl font-bold text-white mb-4">Alterar Senha</h3>
+            <h3 className="text-xl font-bold text-white mb-4">Alterar Email e Senha</h3>
             
             {passwordError && (
               <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
@@ -1449,7 +1490,7 @@ export default function AdminPage() {
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Senha Atual
+                  Senha Atual <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="password"
@@ -1459,6 +1500,21 @@ export default function AdminPage() {
                   placeholder="Digite sua senha atual"
                   disabled={changingPassword}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Novo Email
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  placeholder={user?.email || "Digite o novo email"}
+                  disabled={changingPassword}
+                />
+                <p className="text-xs text-gray-400 mt-1">Deixe em branco para não alterar</p>
               </div>
 
               <div>
@@ -1473,35 +1529,39 @@ export default function AdminPage() {
                   placeholder="Digite a nova senha (mínimo 6 caracteres)"
                   disabled={changingPassword}
                 />
+                <p className="text-xs text-gray-400 mt-1">Deixe em branco para não alterar</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirmar Nova Senha
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                  placeholder="Confirme a nova senha"
-                  disabled={changingPassword}
-                />
-              </div>
+              {newPassword && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Confirmar Nova Senha
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    placeholder="Confirme a nova senha"
+                    disabled={changingPassword}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex space-x-3">
               <button
-                onClick={handleChangePassword}
+                onClick={handleChangeCredentials}
                 disabled={changingPassword}
                 className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {changingPassword ? 'Alterando...' : 'Alterar Senha'}
+                {changingPassword ? 'Alterando...' : 'Alterar Credenciais'}
               </button>
               <button
                 onClick={() => {
                   setShowChangePasswordModal(false)
                   setCurrentPassword('')
+                  setNewEmail('')
                   setNewPassword('')
                   setConfirmPassword('')
                   setPasswordError('')
