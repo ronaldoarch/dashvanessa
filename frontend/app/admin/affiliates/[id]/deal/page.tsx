@@ -133,7 +133,7 @@ export default function AssociateDealPage() {
       
       // Mostrar informações de login e link de referral
       const referralLink = response.data.referralLink || `${typeof window !== 'undefined' ? window.location.origin : ''}/cadastro?ref=${affiliateId}`;
-      const email = response.data.user?.email || affiliate.email;
+      const email = response.data.user?.email || affiliate?.email || '';
       
       const message = `✅ Deal associado com sucesso!\n\n📧 Email: ${email}\n🔗 Link de Referral: ${referralLink}\n\nEssas informações já estão disponíveis na página de convites.`;
       alert(message);
