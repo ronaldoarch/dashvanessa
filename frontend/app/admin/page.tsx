@@ -106,6 +106,7 @@ export default function AdminPage() {
     instagramLink: '',
     facebookLink: '',
     telegramLink: '',
+    superbetLink: '',
   })
   const [savingSocialLinks, setSavingSocialLinks] = useState(false)
 
@@ -307,14 +308,27 @@ export default function AdminPage() {
     
     setSavingSocialLinks(true)
     try {
-      await api.put(`/affiliates/${selectedAffiliate.id}/social-links`, socialLinks)
-      alert('Links sociais atualizados com sucesso!')
+      // Atualizar links sociais e link da Superbet (se fornecido)
+      const updateData: any = { ...socialLinks }
+      if (socialLinks.superbetLink) {
+        await api.put(`/affiliates/${selectedAffiliate.id}/superbet-link`, {
+          superbetAffiliateLink: socialLinks.superbetLink,
+        })
+      }
+      
+      await api.put(`/affiliates/${selectedAffiliate.id}/social-links`, {
+        instagramLink: socialLinks.instagramLink,
+        facebookLink: socialLinks.facebookLink,
+        telegramLink: socialLinks.telegramLink,
+      })
+      
+      alert('Links atualizados com sucesso!')
       await fetchData()
       setShowSocialLinksModal(false)
-      setSocialLinks({ instagramLink: '', facebookLink: '', telegramLink: '' })
+      setSocialLinks({ instagramLink: '', facebookLink: '', telegramLink: '', superbetLink: '' })
       setSelectedAffiliate(null)
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao atualizar links sociais')
+      alert(error.response?.data?.error || 'Erro ao atualizar links')
     } finally {
       setSavingSocialLinks(false)
     }
@@ -326,6 +340,7 @@ export default function AdminPage() {
       instagramLink: affiliate.instagramLink || '',
       facebookLink: affiliate.facebookLink || '',
       telegramLink: affiliate.telegramLink || '',
+      superbetLink: affiliate.superbetAffiliateLink || '',
     })
     setShowSocialLinksModal(true)
   }
@@ -989,29 +1004,38 @@ export default function AdminPage() {
               Gerencie os links sociais do afiliado. O link da Superbet será exibido automaticamente quando disponível.
             </p>
             
-            {/* Link da Superbet (somente leitura) */}
-            {selectedAffiliate.superbetAffiliateLink && (
-              <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <label className="block text-gray-300 text-sm font-medium mb-2">Link Superbet (espelhado da API)</label>
-                <div className="flex items-center gap-2">
+            {/* Link da Superbet (editável pelo admin) */}
+            <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Link Superbet {selectedAffiliate.superbetAffiliateLink && '(espelhado da API - pode modificar)'}
+              </label>
+              <input
+                type="url"
+                value={socialLinks.superbetLink}
+                onChange={(e) => setSocialLinks({ ...socialLinks, superbetLink: e.target.value })}
+                placeholder="https://superbet.com/affiliate/..."
+                className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 mb-2"
+              />
+              {socialLinks.superbetLink && (
+                <div className="flex items-center gap-2 mt-2">
                   <a
-                    href={selectedAffiliate.superbetAffiliateLink}
+                    href={socialLinks.superbetLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-purple-400 hover:text-purple-300 text-sm break-all flex-1"
                   >
-                    {selectedAffiliate.superbetAffiliateLink}
+                    {socialLinks.superbetLink}
                   </a>
                   <button
-                    onClick={() => copyToClipboard(selectedAffiliate.superbetAffiliateLink!)}
+                    onClick={() => copyToClipboard(socialLinks.superbetLink)}
                     className="text-gray-400 hover:text-white"
                     title="Copiar link"
                   >
                     📋
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="space-y-4">
               <div>
@@ -1055,7 +1079,7 @@ export default function AdminPage() {
                 <button
                   onClick={() => {
                     setShowSocialLinksModal(false)
-                    setSocialLinks({ instagramLink: '', facebookLink: '', telegramLink: '' })
+                    setSocialLinks({ instagramLink: '', facebookLink: '', telegramLink: '', superbetLink: '' })
                     setSelectedAffiliate(null)
                   }}
                   className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"

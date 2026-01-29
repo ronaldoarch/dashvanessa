@@ -218,7 +218,7 @@ router.post('/:dealId/affiliate/:affiliateId', authenticate, requireAdmin, async
       },
     });
 
-    // Obter link da Superbet do admin (mesmo link usado para cadastro)
+    // Obter link da Superbet do admin (não geramos links próprios - apenas espelhamos)
     const { getSystemConfig } = await import('../services/config');
     const adminSuperbetLink = await getSystemConfig('ADMIN_SUPERBET_LINK', '');
 
@@ -226,8 +226,9 @@ router.post('/:dealId/affiliate/:affiliateId', authenticate, requireAdmin, async
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const dashboardUrl = `${frontendUrl}/dashboard`;
     
-    // O link de referral é o mesmo link da Superbet do admin
-    const referralLink = adminSuperbetLink || `${frontendUrl}/cadastro?ref=${affiliate.id}`;
+    // O link de referral é o link da Superbet (não geramos links próprios)
+    // Prioridade: link próprio do afiliado > link do admin cadastrado
+    const referralLink = updatedAffiliate.superbetAffiliateLink || adminSuperbetLink;
 
     res.json({
       ...updatedAffiliate,

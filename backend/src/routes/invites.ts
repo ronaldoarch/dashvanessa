@@ -263,6 +263,7 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
     });
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const adminSuperbetLink = await getSystemConfig('ADMIN_SUPERBET_LINK', '');
 
     const invitesWithLinks = invites.map((invite) => ({
       id: invite.id,
@@ -270,7 +271,8 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
       email: invite.email,
       name: invite.name,
       status: invite.status,
-      registrationLink: `${frontendUrl}/register?invite=${invite.code}`,
+      // Não geramos link próprio - usamos apenas o link do admin cadastrado
+      registrationLink: adminSuperbetLink || `${frontendUrl}/register?invite=${invite.code}`,
       expiresAt: invite.expiresAt,
       createdAt: invite.createdAt,
       affiliate: invite.affiliate

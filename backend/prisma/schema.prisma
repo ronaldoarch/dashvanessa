@@ -87,6 +87,7 @@ model Affiliate {
   commissions     Commission[]
   revshareReports RevShareReport[]
   invite          AffiliateInvite?
+  linkEvents      LinkEvent[]
 
   @@index([referredById])
   @@map("affiliates")
@@ -224,4 +225,31 @@ model AffiliateInvite {
   @@index([status])
   @@index([email])
   @@map("affiliate_invites")
+}
+
+enum LinkEventType {
+  CLICK
+  VIEW
+  CONVERSION
+}
+
+model LinkEvent {
+  id            String        @id @default(cuid())
+  affiliateId   String?
+  linkType      String        // 'superbet', 'instagram', 'facebook', 'telegram', 'admin'
+  linkUrl       String
+  eventType     LinkEventType @default(CLICK)
+  ipAddress     String?
+  userAgent     String?
+  referer       String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+
+  affiliate Affiliate? @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+
+  @@index([affiliateId])
+  @@index([linkType])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("link_events")
 }

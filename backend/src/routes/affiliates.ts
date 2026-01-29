@@ -136,16 +136,11 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-// Atualizar links sociais do afiliado (admin ou próprio afiliado)
-router.put('/:id/social-links', authenticate, async (req: AuthRequest, res) => {
+// Atualizar links sociais do afiliado (apenas admin)
+router.put('/:id/social-links', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { instagramLink, facebookLink, telegramLink } = req.body;
-
-    // Verificar se é o próprio afiliado ou admin
-    if (req.user?.role === 'AFFILIATE' && req.user.affiliateId !== id) {
-      return res.status(403).json({ error: 'Acesso negado' });
-    }
 
     const affiliate = await prisma.affiliate.update({
       where: { id },
@@ -181,6 +176,51 @@ router.put('/:id/social-links', authenticate, async (req: AuthRequest, res) => {
     }
     console.error('Update social links error:', error);
     res.status(500).json({ error: 'Erro ao atualizar links sociais' });
+  }
+});
+
+// Atualizar link da Superbet do afiliado (apenas admin - permite modificar link espelhado)
+router.put('/:id/superbet-link', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { superbetAffiliateLink } = req.body;
+
+    if (!superbetAffiliateLink || typeof superbetAffiliateLink !== 'string') {
+      return res.status(400).json({ error: 'Link da Superbet é obrigatório' });
+    }
+
+    const affiliate = await prisma.affiliate.update({
+      where: { id },
+      data: {
+        superbetAffiliateLink,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        deal: {
+          select: {
+            id: true,
+            name: true,
+            cpaValue: true,
+            revSharePercentage: true,
+            active: true,
+          },
+        },
+      },
+    });
+
+    res.json(affiliate);
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Afiliado não encontrado' });
+    }
+    console.error('Update superbet link error:', error);
+    res.status(500).json({ error: 'Erro ao atualizar link da Superbet' });
   }
 });
 
