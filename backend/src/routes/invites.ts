@@ -490,32 +490,65 @@ router.post('/webhook/superbet', async (req, res) => {
     // Log completo dos dados recebidos para debug
     console.log('📥 Webhook Superbet recebido:', JSON.stringify(req.body, null, 2));
 
-    // Buscar convite pelo requestId OU criar novo se não existir (fluxo direto da Superbet)
+    // IMPORTANTE: Quando admin envia link da Superbet, afiliado se cadastra DIRETAMENTE na Superbet
+    // O webhook recebe quando Superbet aprova o cadastro
+    // Buscar registro pendente pelo requestId OU criar novo se não existir
     let invite = await prisma.affiliateInvite.findFirst({
       where: { superbetRequestId: requestId },
       include: { affiliate: true },
     });
 
-    // Se não encontrou convite, pode ser cadastro direto via link da Superbet
-    // Nesse caso, criar um registro temporário para rastrear
-    if (!invite && email) {
-      console.log('📝 Criando registro para afiliado cadastrado diretamente via Superbet');
-      // Criar um registro temporário para rastrear
+    // Se não encontrou registro, é cadastro direto via link da Superbet que admin enviou
+    // Criar registro pendente para rastrear até aprovação
+    if (!invite) {
+      if (!email) {
+        return res.status(400).json({ error: 'Email é obrigatório para criar registro' });
+      }
+
+      console.log('📝 Criando registro pendente para afiliado cadastrado via link da Superbet');
+      
+      // Verificar se já existe usuário com este email
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser) {
+        // Se já existe usuário, buscar afiliado associado
+        const existingAffiliate = await prisma.affiliate.findFirst({
+          where: { userId: existingUser.id },
+          include: { invite: true },
+        });
+
+        if (existingAffiliate) {
+          // Atualizar afiliado existente com link da Superbet
+          await prisma.affiliate.update({
+            where: { id: existingAffiliate.id },
+            data: {
+              superbetAffiliateLink: affiliateLink,
+              superbetAffiliateId: affiliateId,
+            },
+          });
+
+          if (status === 'approved' && !existingAffiliate.dealId) {
+            await createAndAssociateDefaultDeal(existingAffiliate.id, existingAffiliate.name, affiliateId);
+          }
+
+          return res.json({ message: 'Afiliado atualizado com sucesso' });
+        }
+      }
+
+      // Criar registro pendente
       invite = await prisma.affiliateInvite.create({
         data: {
           code: generateInviteCode(),
           email: email,
-          name: req.body.name || email.split('@')[0], // Usar nome do webhook ou derivar do email
-          status: 'PENDING',
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias
+          name: req.body.name || email.split('@')[0],
+          status: status === 'approved' ? 'APPROVED' : 'PENDING',
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
           superbetRequestId: requestId,
         },
         include: { affiliate: true },
       });
-    }
-
-    if (!invite) {
-      return res.status(404).json({ error: 'Registro não encontrado e email não fornecido' });
     }
 
     // Se já tem afiliado criado, apenas atualizar
@@ -564,9 +597,9 @@ router.post('/webhook/superbet', async (req, res) => {
           console.log('⚠️  Senha não recebida da Superbet, criando temporária');
         }
 
-        // Usar email que veio da Superbet se disponível, senão usar do convite
+        // IMPORTANTE: Usar email que veio da Superbet (espelhado)
         const userEmail = email || invite.email;
-        const userName = invite.name;
+        const userName = req.body.name || invite.name;
 
         user = await prisma.user.create({
           data: {
@@ -581,7 +614,7 @@ router.post('/webhook/superbet', async (req, res) => {
       // Criar afiliado com link espelhado da Superbet
       const affiliate = await prisma.affiliate.create({
         data: {
-          name: invite.name,
+          name: req.body.name || invite.name,
           userId: user.id,
           superbetAffiliateLink: affiliateLink, // Link espelhado da Superbet
           superbetAffiliateId: affiliateId,
@@ -603,7 +636,7 @@ router.post('/webhook/superbet', async (req, res) => {
       });
 
       // Criar e associar deal automaticamente (buscar deal real da Superbet)
-      await createAndAssociateDefaultDeal(affiliate.id, invite.name, affiliateId);
+      await createAndAssociateDefaultDeal(affiliate.id, affiliate.name, affiliateId);
 
       // TODO: Enviar email para o afiliado com credenciais e link
     } else {
