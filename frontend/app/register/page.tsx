@@ -14,6 +14,7 @@ export default function RegisterPage() {
     confirmPassword: '',
     phone: '',
     company: '',
+    instagramLink: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -49,6 +50,7 @@ export default function RegisterPage() {
           password: formData.password,
           phone: formData.phone || undefined,
           company: formData.company || undefined,
+          instagramLink: formData.instagramLink || undefined,
         }
       );
 
@@ -156,6 +158,23 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
               className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-gray-300 text-sm font-medium mb-2">
+              URL do Instagram <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="url"
+              value={formData.instagramLink}
+              onChange={(e) => setFormData({ ...formData, instagramLink: e.target.value })}
+              required
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="https://instagram.com/seu_perfil"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Informe o link completo do seu perfil do Instagram
+            </p>
           </div>
 
           <button

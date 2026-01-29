@@ -16,7 +16,7 @@ const superbetAdapter = new SuperbetAdapter({
 // Cadastro público de afiliado (sem convite)
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, phone, company } = req.body;
+    const { email, password, name, phone, company, instagramLink } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Email, senha e nome são obrigatórios' });
@@ -78,6 +78,15 @@ router.post('/register', async (req, res) => {
       // O admin pode cadastrar manualmente depois
     }
 
+    // Validar URL do Instagram se fornecida
+    if (instagramLink && typeof instagramLink === 'string') {
+      try {
+        new URL(instagramLink);
+      } catch {
+        return res.status(400).json({ error: 'URL do Instagram inválida' });
+      }
+    }
+
     // Criar afiliado com status PENDING (aguardando aprovação do admin)
     // Mesmo que Superbet tenha aprovado, mantemos PENDING até admin aprovar no sistema
     const affiliate = await prisma.affiliate.create({
@@ -88,6 +97,7 @@ router.post('/register', async (req, res) => {
         siteIds: [],
         superbetAffiliateId: superbetAffiliateId,
         superbetAffiliateLink: superbetAffiliateLink,
+        instagramLink: instagramLink || null,
       },
     });
 
