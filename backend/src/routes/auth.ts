@@ -185,4 +185,49 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Atualizar senha do próprio usuário (requer senha atual)
+router.put('/change-password', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+    }
+
+    // Buscar usuário atual
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Verificar senha atual
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Senha atual incorreta' });
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Atualizar senha
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ message: 'Senha atualizada com sucesso' });
+  } catch (error: any) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Erro ao atualizar senha' });
+  }
+});
+
 export default router;

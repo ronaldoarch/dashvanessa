@@ -109,6 +109,14 @@ export default function AdminPage() {
     superbetLink: '',
   })
   const [savingSocialLinks, setSavingSocialLinks] = useState(false)
+  
+  // Estados para alterar senha do admin
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'ADMIN')) {
@@ -303,6 +311,44 @@ export default function AdminPage() {
     }
   }
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('Preencha todos os campos')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('A nova senha deve ter pelo menos 6 caracteres')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('As senhas não coincidem')
+      return
+    }
+
+    setChangingPassword(true)
+    setPasswordError('')
+
+    try {
+      await api.put('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      })
+      
+      alert('Senha atualizada com sucesso!')
+      setShowChangePasswordModal(false)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setPasswordError('')
+    } catch (error: any) {
+      setPasswordError(error.response?.data?.error || 'Erro ao atualizar senha')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   const handleSaveSocialLinks = async () => {
     if (!selectedAffiliate) return
     
@@ -446,6 +492,12 @@ export default function AdminPage() {
                 className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
               >
                 Dashboard
+              </button>
+              <button
+                onClick={() => setShowChangePasswordModal(true)}
+                className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
+              >
+                Alterar Senha
               </button>
               <span className="text-sm text-gray-300 font-medium">{user?.name}</span>
               <button
@@ -1378,6 +1430,88 @@ export default function AdminPage() {
             >
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para alterar senha do admin */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-xl p-6 max-w-md w-full border border-gray-800">
+            <h3 className="text-xl font-bold text-white mb-4">Alterar Senha</h3>
+            
+            {passwordError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                <p className="text-red-400 text-sm">{passwordError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Senha Atual
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  placeholder="Digite sua senha atual"
+                  disabled={changingPassword}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Nova Senha
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  placeholder="Digite a nova senha (mínimo 6 caracteres)"
+                  disabled={changingPassword}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Confirmar Nova Senha
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  placeholder="Confirme a nova senha"
+                  disabled={changingPassword}
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={handleChangePassword}
+                disabled={changingPassword}
+                className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {changingPassword ? 'Alterando...' : 'Alterar Senha'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowChangePasswordModal(false)
+                  setCurrentPassword('')
+                  setNewPassword('')
+                  setConfirmPassword('')
+                  setPasswordError('')
+                }}
+                disabled={changingPassword}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
