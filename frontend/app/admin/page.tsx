@@ -831,7 +831,7 @@ export default function AdminPage() {
           )}
 
           {/* Tab Content: Convites - REMOVIDO - Não enviamos convites */}
-          {false && activeTab === 'invites' && (
+          {false && (
             <>
               <div className="mb-6 flex justify-between items-center">
                 <div>
