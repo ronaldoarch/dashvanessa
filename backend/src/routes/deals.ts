@@ -1,6 +1,8 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -157,11 +159,51 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // Associar deal a afiliado (apenas admin)
+// Gera automaticamente senha e URL do dashboard quando o deal é associado
 router.post('/:dealId/affiliate/:affiliateId', authenticate, requireAdmin, async (req, res) => {
   try {
     const { dealId, affiliateId } = req.params;
 
-    const affiliate = await prisma.affiliate.update({
+    const affiliate = await prisma.affiliate.findUnique({
+      where: { id: affiliateId },
+      include: {
+        deal: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!affiliate) {
+      return res.status(404).json({ error: 'Afiliado não encontrado' });
+    }
+
+    // Gerar senha automática se ainda não tiver uma senha definida
+    // (usuários criados via webhook têm senha temporária)
+    let generatedPassword: string | null = null;
+    const user = await prisma.user.findUnique({
+      where: { id: affiliate.userId },
+    });
+
+    // Se o usuário foi criado via webhook (senha temporária), gerar nova senha
+    if (user) {
+      // Verificar se a senha é temporária (gerada pelo webhook)
+      // Vamos gerar uma nova senha sempre que associar um deal
+      generatedPassword = crypto.randomBytes(12).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
+      const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+      
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      });
+    }
+
+    // Associar deal
+    const updatedAffiliate = await prisma.affiliate.update({
       where: { id: affiliateId },
       data: { dealId },
       include: {
@@ -176,7 +218,27 @@ router.post('/:dealId/affiliate/:affiliateId', authenticate, requireAdmin, async
       },
     });
 
-    res.json(affiliate);
+    // Obter link da Superbet do admin (mesmo link usado para cadastro)
+    const { getSystemConfig } = await import('../services/config');
+    const adminSuperbetLink = await getSystemConfig('ADMIN_SUPERBET_LINK', '');
+
+    // Gerar URLs
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const dashboardUrl = `${frontendUrl}/dashboard`;
+    
+    // O link de referral é o mesmo link da Superbet do admin
+    const referralLink = adminSuperbetLink || `${frontendUrl}/cadastro?ref=${affiliate.id}`;
+
+    res.json({
+      ...updatedAffiliate,
+      referralLink,
+      credentials: {
+        email: updatedAffiliate.user.email,
+        password: generatedPassword, // Senha gerada automaticamente
+        loginUrl: `${frontendUrl}/login`,
+        dashboardUrl: dashboardUrl,
+      },
+    });
   } catch (error: any) {
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Deal ou afiliado não encontrado' });

@@ -11,14 +11,44 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const cpaValue = await getSystemConfig('CPA_VALUE', '300');
     const revSharePercentage = await getSystemConfig('REVENUE_SHARE_PERCENTAGE', '25');
+    const adminSuperbetLink = await getSystemConfig('ADMIN_SUPERBET_LINK', '');
 
     res.json({
       cpaValue: parseFloat(cpaValue),
       revSharePercentage: parseFloat(revSharePercentage),
+      adminSuperbetLink,
     });
   } catch (error) {
     console.error('Get config error:', error);
     res.status(500).json({ error: 'Erro ao obter configurações' });
+  }
+});
+
+// Obter link da Superbet do admin
+router.get('/admin-superbet-link', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const link = await getSystemConfig('ADMIN_SUPERBET_LINK', '');
+    res.json({ link });
+  } catch (error) {
+    console.error('Get admin superbet link error:', error);
+    res.status(500).json({ error: 'Erro ao obter link da Superbet' });
+  }
+});
+
+// Atualizar link da Superbet do admin
+router.put('/admin-superbet-link', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { link } = req.body;
+
+    if (!link || typeof link !== 'string') {
+      return res.status(400).json({ error: 'Link é obrigatório' });
+    }
+
+    await setSystemConfig('ADMIN_SUPERBET_LINK', link);
+    res.json({ link, message: 'Link da Superbet atualizado com sucesso' });
+  } catch (error) {
+    console.error('Update admin superbet link error:', error);
+    res.status(500).json({ error: 'Erro ao atualizar link da Superbet' });
   }
 });
 

@@ -58,6 +58,18 @@ export default function InvitesPage() {
     }
   }, [user, authLoading]);
 
+  // Recarregar convites quando a página receber foco (voltar de outra página)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user?.role === 'ADMIN') {
+        loadInvites();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user]);
+
   const loadInvites = async () => {
     try {
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/invites`, {
@@ -209,6 +221,9 @@ export default function InvitesPage() {
                     Deal
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Login & Link
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
@@ -279,6 +294,47 @@ export default function InvitesPage() {
                         >
                           Criar Deal
                         </button>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      {invite.affiliate?.deal && invite.affiliate?.id ? (
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-xs text-gray-500">Email:</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-white">{invite.affiliate.user?.email || invite.email}</span>
+                              <button
+                                onClick={() => copyToClipboard(invite.affiliate!.user?.email || invite.email)}
+                                className="text-gray-400 hover:text-white"
+                                title="Copiar email"
+                              >
+                                📋
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500">Link de Referral:</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <a
+                                href={`${typeof window !== 'undefined' ? window.location.origin : ''}/cadastro?ref=${invite.affiliate.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-purple-400 hover:text-purple-300 truncate max-w-xs"
+                              >
+                                {`${typeof window !== 'undefined' ? window.location.origin : ''}/cadastro?ref=${invite.affiliate.id}`}
+                              </a>
+                              <button
+                                onClick={() => copyToClipboard(`${typeof window !== 'undefined' ? window.location.origin : ''}/cadastro?ref=${invite.affiliate!.id}`)}
+                                className="text-gray-400 hover:text-white"
+                                title="Copiar link de referral"
+                              >
+                                📋
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       ) : (
                         <span className="text-gray-500">-</span>
                       )}

@@ -22,6 +22,7 @@ function generateInviteCode(): string {
 
 /**
  * Criar novo convite (apenas admin)
+ * Obtém link de cadastro da Superbet para enviar ao afiliado
  */
 router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
@@ -53,6 +54,20 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
       });
     }
 
+    // Obter link da Superbet do admin (configurado pelo admin)
+    const { getSystemConfig } = await import('../services/config');
+    const adminSuperbetLink = await getSystemConfig('ADMIN_SUPERBET_LINK', '');
+
+    if (!adminSuperbetLink) {
+      return res.status(400).json({
+        error: 'Link da Superbet do admin não configurado. Configure o link antes de criar convites.',
+      });
+    }
+
+    // Usar o link do admin como link de cadastro
+    const superbetRegistrationLink = adminSuperbetLink;
+    const superbetRequestId: string | null = null; // Não precisamos mais do requestId da API
+
     // Criar convite
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expiresInDays);
@@ -64,19 +79,16 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
         name,
         expiresAt,
         status: 'PENDING',
+        superbetRequestId,
       },
     });
-
-    // Gerar link de cadastro
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const registrationLink = `${frontendUrl}/register?invite=${invite.code}`;
 
     res.status(201).json({
       id: invite.id,
       code: invite.code,
       email: invite.email,
       name: invite.name,
-      registrationLink,
+      registrationLink: superbetRegistrationLink, // Link da Superbet
       expiresAt: invite.expiresAt,
       status: invite.status,
     });

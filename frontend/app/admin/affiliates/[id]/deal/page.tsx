@@ -119,7 +119,7 @@ export default function AssociateDealPage() {
 
   const handleAssociateDeal = async (dealId: string) => {
     try {
-      await axios.post(
+      const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/deals/${dealId}/affiliate/${affiliateId}`,
         {},
         {
@@ -130,7 +130,20 @@ export default function AssociateDealPage() {
       );
 
       await loadData();
-      alert('Deal associado com sucesso!');
+      
+      // Mostrar informações de login e link de referral
+      const referralLink = response.data.referralLink || `${typeof window !== 'undefined' ? window.location.origin : ''}/cadastro?ref=${affiliateId}`;
+      const email = response.data.user?.email || affiliate.email;
+      
+      const message = `✅ Deal associado com sucesso!\n\n📧 Email: ${email}\n🔗 Link de Referral: ${referralLink}\n\nEssas informações já estão disponíveis na página de convites.`;
+      alert(message);
+      
+      // Copiar link automaticamente
+      try {
+        await navigator.clipboard.writeText(referralLink);
+      } catch (e) {
+        // Ignorar erro de clipboard
+      }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao associar deal');
     }

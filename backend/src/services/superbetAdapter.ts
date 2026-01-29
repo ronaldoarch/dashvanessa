@@ -87,6 +87,28 @@ class SuperbetAdapter {
   }
 
   /**
+   * Obtém link de cadastro da Superbet para um novo afiliado
+   */
+  async getRegistrationLink(email: string, name: string): Promise<{ registrationLink: string; requestId: string }> {
+    try {
+      const response = await this.api.post<{ registrationLink: string; requestId: string }>('/affiliates/registration-link', {
+        email,
+        name,
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        throw new Error('Chave de API da Superbet inválida ou expirada');
+      }
+      if (error.response?.status === 400) {
+        throw new Error(`Erro na requisição: ${error.response.data.message || 'Dados inválidos'}`);
+      }
+      console.error('Error getting registration link:', error.message);
+      throw new Error(`Erro ao obter link de cadastro: ${error.message}`);
+    }
+  }
+
+  /**
    * Verifica o status de uma requisição de cadastro
    */
   async checkRequestStatus(requestId: string): Promise<SuperbetRegisterResponse> {
