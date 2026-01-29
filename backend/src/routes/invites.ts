@@ -263,6 +263,7 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
     });
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const { getSystemConfig } = await import('../services/config');
     const adminSuperbetLink = await getSystemConfig('ADMIN_SUPERBET_LINK', '');
 
     const invitesWithLinks = invites.map((invite) => ({
