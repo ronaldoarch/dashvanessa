@@ -44,6 +44,11 @@ router.post('/login', async (req, res) => {
         } 
       },
     });
+    
+    // Verificar status do afiliado se existir
+    if (user?.affiliate && user.affiliate.status === 'REJECTED') {
+      return res.status(403).json({ error: 'Sua conta foi rejeitada. Entre em contato com o administrador.' });
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
@@ -83,6 +88,7 @@ router.post('/login', async (req, res) => {
         role: user.role,
         affiliateId: user.affiliateId,
       },
+      affiliateStatus: user.affiliate?.status || null,
     });
   } catch (error: any) {
     console.error('Login error:', error);
@@ -174,11 +180,34 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
       include: {
-        affiliate: true,
+        affiliate: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            dealId: true,
+            superbetAffiliateLink: true,
+            superbetAffiliateId: true,
+            instagramLink: true,
+            facebookLink: true,
+            telegramLink: true,
+          },
+        },
       },
     });
 
-    res.json(user);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      affiliateId: user.affiliateId,
+      affiliateStatus: user.affiliate?.status || null,
+    });
   } catch (error) {
     console.error('Get me error:', error);
     res.status(500).json({ error: 'Erro ao obter usuário' });

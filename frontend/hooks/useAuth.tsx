@@ -9,6 +9,7 @@ interface User {
   name: string
   role: string
   affiliateId?: string
+  affiliateStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null
 }
 
 interface AuthContextType {
@@ -49,11 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password })
-    const { token, user: userData } = response.data
+    const { token, user: userData, affiliateStatus } = response.data
+
+    const userWithStatus = {
+      ...userData,
+      affiliateStatus: affiliateStatus || null,
+    }
 
     localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(userData))
-    setUser(userData)
+    localStorage.setItem('user', JSON.stringify(userWithStatus))
+    setUser(userWithStatus)
   }
 
   const logout = () => {

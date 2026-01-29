@@ -13,6 +13,7 @@ interface Affiliate {
   externalId: string | null
   userId: string
   dealId: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
   superbetAffiliateLink?: string
   superbetAffiliateId?: string
   instagramLink?: string
@@ -129,7 +130,7 @@ export default function AdminPage() {
     if (user && user.role === 'ADMIN') {
       fetchData()
     }
-  }, [user])
+  }, [user, filterStatus])
 
   // Recarregar dados quando a página receber foco
   useEffect(() => {
@@ -146,8 +147,12 @@ export default function AdminPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
+      const affiliatesUrl = filterStatus && filterStatus !== 'all' 
+        ? `/affiliates?status=${filterStatus}`
+        : '/affiliates'
+      
       const [affiliatesRes, dealsRes, invitesRes, configRes] = await Promise.all([
-        api.get('/affiliates'),
+        api.get(affiliatesUrl),
         api.get('/deals'),
         axios.get(`${process.env.NEXT_PUBLIC_API_URL}/invites`, {
           headers: {
@@ -622,6 +627,38 @@ export default function AdminPage() {
                 <p className="text-gray-400">Visualize credenciais, links de referral e configure deals para cada afiliado</p>
               </div>
 
+              {/* Filtro por Status e Link de Cadastro */}
+              <div className="mb-4 flex justify-between items-center gap-4">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value)
+                  }}
+                  className="bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-2 text-white"
+                >
+                  <option value="all">Todos os Status</option>
+                  <option value="PENDING">Pendentes (Aguardando Aprovação)</option>
+                  <option value="APPROVED">Aprovados</option>
+                  <option value="REJECTED">Rejeitados</option>
+                </select>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400">Link de Cadastro:</span>
+                  <div className="flex items-center gap-2 bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2">
+                    <span className="text-white text-sm font-mono">
+                      {typeof window !== 'undefined' ? `${window.location.origin}/register` : '/register'}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(typeof window !== 'undefined' ? `${window.location.origin}/register` : '/register')}
+                      className="text-gray-400 hover:text-white"
+                      title="Copiar link de cadastro"
+                    >
+                      📋
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div className="glass rounded-xl overflow-hidden border border-gray-800 shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-800">
@@ -629,6 +666,9 @@ export default function AdminPage() {
                       <tr>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
                           Nome / Email
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Status
                         </th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
                           ID Externo
@@ -650,7 +690,7 @@ export default function AdminPage() {
                     <tbody className="divide-y divide-gray-800">
                       {affiliates.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">
+                          <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-400">
                             Nenhum afiliado cadastrado
                           </td>
                         </tr>
@@ -666,6 +706,19 @@ export default function AdminPage() {
                                 <div className="text-xs text-gray-400">
                                   {affiliate.user.email}
                                 </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                    affiliate.status === 'APPROVED'
+                                      ? 'bg-green-500/20 text-green-400'
+                                      : affiliate.status === 'PENDING'
+                                      ? 'bg-yellow-500/20 text-yellow-400'
+                                      : 'bg-red-500/20 text-red-400'
+                                  }`}
+                                >
+                                  {affiliate.status === 'APPROVED' ? 'Aprovado' : affiliate.status === 'PENDING' ? 'Em Verificação' : 'Rejeitado'}
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-xs text-gray-400 font-mono">
@@ -768,6 +821,44 @@ export default function AdminPage() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 <div className="flex flex-col gap-2">
+                                  {/* Botões de Aprovação/Rejeição */}
+                                  {affiliate.status === 'PENDING' && (
+                                    <div className="flex gap-2 mb-2">
+                                      <button
+                                        onClick={async () => {
+                                          if (confirm(`Deseja aprovar o afiliado ${affiliate.name}?`)) {
+                                            try {
+                                              await api.put(`/affiliates/${affiliate.id}/approve`)
+                                              alert('Afiliado aprovado com sucesso!')
+                                              await fetchData()
+                                            } catch (error: any) {
+                                              alert(error.response?.data?.error || 'Erro ao aprovar afiliado')
+                                            }
+                                          }
+                                        }}
+                                        className="text-green-400 hover:text-green-300 font-medium text-xs bg-green-500/10 px-2 py-1 rounded"
+                                      >
+                                        ✅ Aprovar
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          if (confirm(`Deseja rejeitar o afiliado ${affiliate.name}?`)) {
+                                            try {
+                                              await api.put(`/affiliates/${affiliate.id}/reject`)
+                                              alert('Afiliado rejeitado')
+                                              await fetchData()
+                                            } catch (error: any) {
+                                              alert(error.response?.data?.error || 'Erro ao rejeitar afiliado')
+                                            }
+                                          }
+                                        }}
+                                        className="text-red-400 hover:text-red-300 font-medium text-xs bg-red-500/10 px-2 py-1 rounded"
+                                      >
+                                        ❌ Rejeitar
+                                      </button>
+                                    </div>
+                                  )}
+                                  
                                   <div className="flex gap-2">
                                     <button
                                       onClick={() => {
@@ -777,6 +868,7 @@ export default function AdminPage() {
                                         setShowEditValuesModal(true)
                                       }}
                                       className="text-yellow-400 hover:text-yellow-300 font-medium text-xs"
+                                      disabled={affiliate.status !== 'APPROVED'}
                                     >
                                       Editar Valores
                                     </button>
@@ -797,13 +889,15 @@ export default function AdminPage() {
                                         setShowDealModal(true)
                                       }}
                                       className="text-primary-400 hover:text-primary-300 text-xs"
+                                      disabled={affiliate.status !== 'APPROVED'}
                                     >
-                                      {affiliate.deal ? 'Trocar Deal' : 'Associar Deal'}
+                                      {affiliate.deal ? 'Trocar Deal' : 'Criar Deal'}
                                     </button>
                                     {affiliate.deal && (
                                       <button
                                         onClick={() => handleRemoveDeal(affiliate.id)}
                                         className="text-red-400 hover:text-red-300 text-xs"
+                                        disabled={affiliate.status !== 'APPROVED'}
                                       >
                                         Remover Deal
                                       </button>
@@ -813,6 +907,7 @@ export default function AdminPage() {
                                     <button
                                       onClick={() => openSocialLinksModal(affiliate)}
                                       className="text-green-400 hover:text-green-300 text-xs"
+                                      disabled={affiliate.status !== 'APPROVED'}
                                     >
                                       Links Sociais
                                     </button>

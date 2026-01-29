@@ -6,11 +6,88 @@ import crypto from 'crypto';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Cadastro público de afiliado (sem convite)
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, name, phone, company } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, senha e nome são obrigatórios' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
+    }
+
+    // Verificar se email já existe
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+
+    // Criar usuário
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.default.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: 'AFFILIATE',
+      },
+    });
+
+    // Criar afiliado com status PENDING (aguardando aprovação do admin)
+    const affiliate = await prisma.affiliate.create({
+      data: {
+        name,
+        userId: user.id,
+        status: 'PENDING',
+        siteIds: [],
+      },
+    });
+
+    // Atualizar user com affiliateId
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { affiliateId: affiliate.id },
+    });
+
+    res.status(201).json({
+      message: 'Cadastro realizado com sucesso! Sua conta está aguardando aprovação do administrador.',
+      affiliate: {
+        id: affiliate.id,
+        email: user.email,
+        name: affiliate.name,
+        status: affiliate.status,
+      },
+    });
+  } catch (error: any) {
+    console.error('Register affiliate error:', error);
+    res.status(500).json({ error: 'Erro ao realizar cadastro' });
+  }
+});
+
 // Listar todos os afiliados (admin) ou apenas o próprio (afiliado)
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role === 'ADMIN') {
+      const { status } = req.query;
+      const where: any = {};
+      
+      if (status && typeof status === 'string' && status !== 'all') {
+        where.status = status;
+      }
+
       const affiliates = await prisma.affiliate.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
         include: {
           user: {
             select: {
@@ -63,6 +140,57 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('List affiliates error:', error);
     res.status(500).json({ error: 'Erro ao listar afiliados' });
+  }
+});
+
+// Aprovar afiliado (apenas admin)
+router.put('/:id/approve', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const affiliate = await prisma.affiliate.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!affiliate) {
+      return res.status(404).json({ error: 'Afiliado não encontrado' });
+    }
+
+    await prisma.affiliate.update({
+      where: { id },
+      data: { status: 'APPROVED' },
+    });
+
+    res.json({ message: 'Afiliado aprovado com sucesso' });
+  } catch (error: any) {
+    console.error('Approve affiliate error:', error);
+    res.status(500).json({ error: 'Erro ao aprovar afiliado' });
+  }
+});
+
+// Rejeitar afiliado (apenas admin)
+router.put('/:id/reject', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const affiliate = await prisma.affiliate.findUnique({
+      where: { id },
+    });
+
+    if (!affiliate) {
+      return res.status(404).json({ error: 'Afiliado não encontrado' });
+    }
+
+    await prisma.affiliate.update({
+      where: { id },
+      data: { status: 'REJECTED' },
+    });
+
+    res.json({ message: 'Afiliado rejeitado' });
+  } catch (error: any) {
+    console.error('Reject affiliate error:', error);
+    res.status(500).json({ error: 'Erro ao rejeitar afiliado' });
   }
 });
 

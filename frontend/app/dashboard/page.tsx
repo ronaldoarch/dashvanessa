@@ -138,6 +138,35 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          {/* Banner de Status para Afiliados Pendentes */}
+          {user?.role === 'AFFILIATE' && user.affiliateStatus === 'PENDING' && (
+            <div className="mb-6 glass rounded-xl p-4 border border-yellow-500/50 bg-yellow-500/10">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⏳</span>
+                <div className="flex-1">
+                  <h3 className="text-yellow-400 font-semibold mb-1">Conta em Verificação</h3>
+                  <p className="text-yellow-300 text-sm">
+                    Sua conta está aguardando aprovação do administrador. Você pode fazer login, mas algumas funcionalidades estarão limitadas até a aprovação.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {user?.role === 'AFFILIATE' && user.affiliateStatus === 'REJECTED' && (
+            <div className="mb-6 glass rounded-xl p-4 border border-red-500/50 bg-red-500/10">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">❌</span>
+                <div className="flex-1">
+                  <h3 className="text-red-400 font-semibold mb-1">Conta Rejeitada</h3>
+                  <p className="text-red-300 text-sm">
+                    Sua conta foi rejeitada. Entre em contato com o administrador para mais informações.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Header Section */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">
@@ -151,20 +180,32 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Seção de Limites e Link de Indicação */}
-          <div className={`grid grid-cols-1 ${user?.role === 'AFFILIATE' ? 'lg:grid-cols-2' : ''} gap-6 mb-8`}>
-            {metrics && (
+          {/* Seção de Limites e Link de Indicação - Só mostra se aprovado */}
+          {user?.role === 'AFFILIATE' && user.affiliateStatus === 'APPROVED' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {metrics && (
+                <LimitsCard 
+                  cpaValue={metrics.cpaValue}
+                  revSharePercentage={metrics.revSharePercentage}
+                  totalRevShare={metrics.totalRevShare}
+                  dealName={metrics.dealName}
+                />
+              )}
+              <ReferralLinkCard affiliateId={user?.affiliateId} />
+            </div>
+          )}
+
+          {/* Mostrar métricas para admin sempre */}
+          {user?.role === 'ADMIN' && metrics && (
+            <div className="mb-8">
               <LimitsCard 
                 cpaValue={metrics.cpaValue}
                 revSharePercentage={metrics.revSharePercentage}
                 totalRevShare={metrics.totalRevShare}
                 dealName={metrics.dealName}
               />
-            )}
-            {user?.role === 'AFFILIATE' && (
-              <ReferralLinkCard affiliateId={user?.affiliateId} />
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Filtros */}
           <div className="mb-6">

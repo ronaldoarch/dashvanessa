@@ -1,18 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const inviteCode = searchParams.get('invite');
-
-  const [invite, setInvite] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    email: '',
+    name: '',
     password: '',
     confirmPassword: '',
     phone: '',
@@ -21,30 +18,15 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    if (!inviteCode) {
-      setError('Código de convite não fornecido');
-      setLoading(false);
-      return;
-    }
-
-    // Buscar informações do convite
-    axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/invites/${inviteCode}`)
-      .then((response) => {
-        setInvite(response.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.response?.data?.error || 'Erro ao carregar convite');
-        setLoading(false);
-      });
-  }, [inviteCode]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!formData.email || !formData.name || !formData.password) {
+      setError('Email, nome e senha são obrigatórios');
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('As senhas não coincidem');
@@ -60,26 +42,20 @@ export default function RegisterPage() {
 
     try {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/invites/${inviteCode}/register`,
+        `${process.env.NEXT_PUBLIC_API_URL}/affiliates/register`,
         {
+          email: formData.email,
+          name: formData.name,
           password: formData.password,
           phone: formData.phone || undefined,
           company: formData.company || undefined,
         }
       );
 
-      if (response.data.affiliate) {
-        // Aprovado imediatamente
-        setSuccess('Cadastro realizado com sucesso! Redirecionando para login...');
-        setTimeout(() => {
-          router.push('/login');
-        }, 2000);
-      } else {
-        // Pendente de aprovação
-        setSuccess(
-          'Cadastro enviado para aprovação. Você receberá um email quando for aprovado.'
-        );
-      }
+      setSuccess('Cadastro realizado com sucesso! Sua conta está aguardando aprovação do administrador. Você pode fazer login, mas ficará em modo de verificação até ser aprovado.');
+      setTimeout(() => {
+        router.push('/login');
+      }, 3000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erro ao realizar cadastro');
     } finally {
@@ -87,31 +63,12 @@ export default function RegisterPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
-        <div className="text-white">Carregando...</div>
-      </div>
-    );
-  }
-
-  if (!invite) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
-        <div className="bg-gray-800/50 backdrop-blur-lg rounded-lg p-8 max-w-md w-full">
-          <h1 className="text-2xl font-bold text-white mb-4">Convite Inválido</h1>
-          <p className="text-gray-300">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4">
       <div className="bg-gray-800/50 backdrop-blur-lg rounded-lg p-8 max-w-md w-full shadow-xl">
         <h1 className="text-2xl font-bold text-white mb-2">Cadastro de Afiliado</h1>
         <p className="text-gray-400 mb-6">
-          Você foi convidado por: <span className="text-white font-semibold">{invite.name}</span>
+          Preencha os dados abaixo para se cadastrar. Sua conta ficará aguardando aprovação do administrador.
         </p>
 
         {error && (
@@ -128,22 +85,30 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">Email</label>
+            <label className="block text-gray-300 text-sm font-medium mb-2">
+              Email <span className="text-red-400">*</span>
+            </label>
             <input
               type="email"
-              value={invite.email}
-              disabled
-              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-300 cursor-not-allowed"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="seu@email.com"
             />
           </div>
 
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">Nome</label>
+            <label className="block text-gray-300 text-sm font-medium mb-2">
+              Nome <span className="text-red-400">*</span>
+            </label>
             <input
               type="text"
-              value={invite.name}
-              disabled
-              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-300 cursor-not-allowed"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Seu nome completo"
             />
           </div>
 

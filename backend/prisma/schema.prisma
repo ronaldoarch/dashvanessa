@@ -33,6 +33,12 @@ enum AffiliateInviteStatus {
   EXPIRED
 }
 
+enum AffiliateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -62,20 +68,21 @@ model Session {
 }
 
 model Affiliate {
-  id                    String   @id @default(cuid())
-  externalId            String?  @unique
+  id                    String          @id @default(cuid())
+  externalId            String?         @unique
   name                  String
   siteIds               Int[]
-  userId                String   @unique
+  userId                String          @unique
   dealId                String?
   referredById          String?
+  status                AffiliateStatus @default(PENDING)
   superbetAffiliateLink String?
   superbetAffiliateId   String?
   instagramLink         String?
   facebookLink          String?
   telegramLink          String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   deal            Deal?             @relation(fields: [dealId], references: [id], onDelete: SetNull)
