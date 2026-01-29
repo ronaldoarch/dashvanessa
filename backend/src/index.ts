@@ -10,6 +10,7 @@ import otgRoutes from './routes/otg';
 import dealsRoutes from './routes/deals';
 import referralRoutes from './routes/referral';
 import invitesRoutes from './routes/invites';
+import trackingRoutes from './routes/tracking';
 import { setupCronJobs } from './services/cron';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -31,6 +32,7 @@ app.use('/api/otg', otgRoutes);
 app.use('/api/deals', dealsRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/invites', invitesRoutes);
+app.use('/api/tracking', trackingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
