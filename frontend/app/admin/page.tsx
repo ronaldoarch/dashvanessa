@@ -77,7 +77,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
+  const [resetPassword, setResetPassword] = useState('')
   const [showDealModal, setShowDealModal] = useState(false)
   const [showEditValuesModal, setShowEditValuesModal] = useState(false)
   const [editCpaValue, setEditCpaValue] = useState('')
@@ -297,15 +297,15 @@ export default function AdminPage() {
   }
 
   const handleResetPassword = async () => {
-    if (!selectedAffiliate || !newPassword) return
+    if (!selectedAffiliate || !resetPassword) return
     
     try {
       await api.put(`/auth/reset-password/${selectedAffiliate.userId}`, {
-        password: newPassword,
+        password: resetPassword,
       })
       alert('Senha atualizada com sucesso!')
       setShowPasswordModal(false)
-      setNewPassword('')
+      setResetPassword('')
       setSelectedAffiliate(null)
     } catch (error: any) {
       alert(error.response?.data?.error || 'Erro ao atualizar senha')
@@ -1306,8 +1306,8 @@ export default function AdminPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">Nova Senha (opcional)</label>
                 <input
                   type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
                   placeholder="Deixe em branco para manter a atual"
                   className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-100 text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50"
                 />
@@ -1340,7 +1340,7 @@ export default function AdminPage() {
               <button
                 onClick={() => {
                   setShowPasswordModal(false)
-                  setNewPassword('')
+                  setResetPassword('')
                   setSelectedAffiliate(null)
                 }}
                 className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
