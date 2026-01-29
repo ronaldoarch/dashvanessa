@@ -28,6 +28,17 @@ interface OTGResultGranular {
   qualified_cpa: number;
 }
 
+interface OTGResultGrouped {
+  id: string;
+  label: string;
+  lucro_tipster: number;
+  cpa: number;
+  rvs: number;
+  registrations: number;
+  first_deposits: number;
+  qualified_cpa: number;
+}
+
 interface OTGResponse<T> {
   data: T[];
   meta?: {
@@ -36,6 +47,11 @@ interface OTGResponse<T> {
     totalRows: number;
     pageSize: number;
   };
+}
+
+// Type guard para distinguir entre ResultGranular e ResultGrouped
+function isResultGranular(result: OTGResultGranular | OTGResultGrouped): result is OTGResultGranular {
+  return 'affiliateId' in result && 'affiliateName' in result && 'campaignName' in result && 'date' in result;
 }
 
 class OTGAdapter {
@@ -188,7 +204,7 @@ class OTGAdapter {
     page: number = 1,
     limit: number = 50,
     groupBy?: 'affiliate' | 'campaign' | 'date'
-  ): Promise<OTGResponse<OTGResultGranular>> {
+  ): Promise<OTGResponse<OTGResultGranular | OTGResultGrouped>> {
     try {
       // Validar formato de data (YYYY-MM-DD)
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -218,7 +234,7 @@ class OTGAdapter {
         params.campaignIds = campaignIds;
       }
 
-      const response = await this.api.get<OTGResponse<OTGResultGranular>>('/external/results', {
+      const response = await this.api.get<OTGResponse<OTGResultGranular | OTGResultGrouped>>('/external/results', {
         params,
         // Axios precisa serializar arrays corretamente
         paramsSerializer: {
@@ -379,8 +395,19 @@ class OTGAdapter {
           break;
         }
 
-        for (const result of results) {
+        for (const resultItem of results) {
           totalProcessed++;
+          
+          // syncResults sempre usa dados granulares (sem groupBy)
+          // Verificar se é resultado granular, senão pular
+          if (!isResultGranular(resultItem)) {
+            console.warn('⚠️ Resultado agrupado encontrado em syncResults. Pulando...');
+            continue;
+          }
+          
+          // Agora TypeScript sabe que resultItem é OTGResultGranular
+          const result = resultItem;
+          
           // Encontrar ou criar afiliado
           let affiliate = await prisma.affiliate.findUnique({
             where: { externalId: result.affiliateId },

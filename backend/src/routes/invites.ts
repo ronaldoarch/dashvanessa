@@ -746,10 +746,10 @@ router.post('/:id/check-status', authenticate, requireAdmin, async (req: AuthReq
 router.post('/sync-pending', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     // Importar função de sincronização do cron
-    const cronModule = await import('../services/cron');
+    const { syncSuperbetAffiliates } = await import('../services/cron');
     
     // Executar sincronização
-    await cronModule.syncSuperbetAffiliates?.();
+    await syncSuperbetAffiliates();
     
     res.json({ message: 'Sincronização de afiliados pendentes concluída' });
   } catch (error: any) {
